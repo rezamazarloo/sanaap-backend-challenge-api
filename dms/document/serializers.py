@@ -1,10 +1,31 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from document.models import Document, DocumentType
-from document.validators import UploadedFileValidator
+from document.validators import EXTENSION_CONTENT_TYPES, UploadedFileValidator
 from rest_framework import serializers
 
 
+AVAILABLE_EXTENSIONS = sorted(EXTENSION_CONTENT_TYPES)
+AVAILABLE_CONTENT_TYPES = sorted(
+    {
+        content_type
+        for content_types in EXTENSION_CONTENT_TYPES.values()
+        for content_type in content_types
+    }
+)
+
+
 class DocumentTypeSerializer(serializers.ModelSerializer):
+    allowed_extensions = serializers.ListField(
+        child=serializers.ChoiceField(choices=AVAILABLE_EXTENSIONS),
+        help_text="Allowed file extensions for this document type.",
+    )
+    allowed_content_types = serializers.ListField(
+        child=serializers.ChoiceField(choices=AVAILABLE_CONTENT_TYPES),
+        required=False,
+        allow_empty=True,
+        help_text="Allowed server-detected MIME types for this document type.",
+    )
+
     class Meta:
         model = DocumentType
         fields = (
@@ -155,8 +176,8 @@ class DocumentDownloadSerializer(DocumentListSerializer):
             "expires_in",
         )
 
-    def get_download_url(self, obj):
+    def get_download_url(self, obj) -> str:
         return self.context["download_url"]
 
-    def get_expires_in(self, obj):
+    def get_expires_in(self, obj) -> int:
         return self.context["expires_in"]
