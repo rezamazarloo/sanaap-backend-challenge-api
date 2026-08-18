@@ -7,6 +7,7 @@ INITIAL_DOCUMENT_TYPES = [
         "code": "national_id_card",
         "description": "Government-issued national identification card.",
         "allowed_extensions": ["jpg", "jpeg", "png"],
+        "allowed_content_types": ["image/jpeg", "image/png"],
         "max_size_bytes": 5 * 1024 * 1024,
         "is_active": True,
     },
@@ -15,6 +16,7 @@ INITIAL_DOCUMENT_TYPES = [
         "code": "profile",
         "description": "Personal profile image.",
         "allowed_extensions": ["jpg", "jpeg", "png"],
+        "allowed_content_types": ["image/jpeg", "image/png"],
         "max_size_bytes": 5 * 1024 * 1024,
         "is_active": True,
     },
@@ -34,6 +36,16 @@ class Command(BaseCommand):
             if created:
                 self.stdout.write(
                     self.style.SUCCESS(f"Created document type '{document_type.name}'.")
+                )
+            elif not document_type.allowed_content_types:
+                document_type.allowed_content_types = document_type_data[
+                    "allowed_content_types"
+                ]
+                document_type.save(update_fields=["allowed_content_types"])
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Updated document type '{document_type.name}'."
+                    )
                 )
             else:
                 self.stdout.write(
