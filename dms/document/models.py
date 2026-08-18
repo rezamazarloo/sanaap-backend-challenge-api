@@ -24,6 +24,11 @@ class Document(models.Model):
         on_delete=models.PROTECT,
         related_name="documents",
     )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="documents",
+    )
     original_filename = models.CharField(max_length=255)
     object_key = models.CharField(max_length=500, unique=True)
     content_type = models.CharField(max_length=100)
