@@ -7,6 +7,7 @@ class DocumentType(models.Model):
     code = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True)
     allowed_extensions = models.JSONField(default=list, blank=True)
+    allowed_content_types = models.JSONField(default=list, blank=True)
     max_size_bytes = models.PositiveBigIntegerField()
     is_active = models.BooleanField(default=True)
 
