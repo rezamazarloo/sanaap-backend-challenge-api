@@ -3,6 +3,7 @@ from django.urls import include, path
 
 urlpatterns = [
     path("api/v1/account/", include("account.urls", namespace="account")),
+    path("api/v1/documents/", include("document.urls", namespace="document")),
 ]
 
 
