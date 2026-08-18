@@ -27,3 +27,18 @@ Seed the initial document types:
 ```powershell
 uv run python dms/manage.py seed_document_types
 ```
+
+## Document API
+
+- `GET /api/v1/documents/` lists accessible documents.
+- `POST /api/v1/documents/` uploads a document for the authenticated user.
+- `GET /api/v1/documents/users/<user_id>/` lists documents owned by a user.
+- `POST /api/v1/documents/users/<user_id>/` uploads a document for a user.
+- `GET /api/v1/documents/<document_id>/` returns metadata and a presigned download URL.
+- `PUT /api/v1/documents/<document_id>/` updates document metadata.
+- `DELETE /api/v1/documents/<document_id>/` deletes a document.
+
+## Document Type API
+
+- `GET/POST /api/v1/documents/types/`
+- `GET/PUT/DELETE /api/v1/documents/types/<document_type_id>/`
