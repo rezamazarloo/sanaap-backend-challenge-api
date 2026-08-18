@@ -1,7 +1,9 @@
 from django.conf import settings
 from django.urls import include, path
 
-urlpatterns = []
+urlpatterns = [
+    path("api/v1/account/", include("account.urls", namespace="account")),
+]
 
 
 if settings.DEBUG:

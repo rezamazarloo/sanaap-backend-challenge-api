@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "drf_spectacular",
     # Local apps
+    "account.apps.AccountConfig",
 ]
 
 MIDDLEWARE = [
