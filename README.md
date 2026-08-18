@@ -31,6 +31,7 @@ API implementation using **Django REST Framework** for a document management sys
 ## Deployment with Docker
 
 The project is fully dockerized and includes a `docker-compose` setup to run:
+
 - Django backend
 - PostgreSQL database
 - Redis (for caching)
