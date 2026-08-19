@@ -14,12 +14,13 @@ FROM python:3.13-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV HOME=/home/django
 ENV PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
 RUN addgroup --system django \
-    && adduser --system --ingroup django django
+    && adduser --system --ingroup django --home /home/django django
 
 COPY --from=builder --chown=django:django /app /app
 

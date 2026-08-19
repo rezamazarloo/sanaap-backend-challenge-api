@@ -22,6 +22,12 @@ Create the default RBAC groups and permissions:
 uv run python dms/manage.py bootstrap_roles
 ```
 
+Create the default `admin` / `admin` superuser:
+
+```powershell
+uv run python dms/manage.py create_default_superuser
+```
+
 Seed the initial document types:
 
 ```powershell
@@ -30,17 +36,18 @@ uv run python dms/manage.py seed_document_types
 
 ## Production Docker
 
-The development `docker-compose.yml` is unchanged. Production uses Gunicorn behind Nginx:
+The development `docker-compose.yml` is unchanged. Production uses Gunicorn for Django:
 
 ```powershell
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-- `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, and `seed_document_types`, then publishes Gunicorn only on host `127.0.0.1:8000`.
-- `nginx` publishes HTTP port `80` and proxies traffic through the Docker network.
-- Nginx proxies all HTTP traffic to the Django app.
+- `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, `create_default_superuser`, and `seed_document_types`, then publishes Gunicorn on host port `8000`.
+- Django is available on `http://localhost:8000/`.
+- MinIO is available on `http://localhost:9000/`.
+- MinIO console is available on `http://localhost:9001/`.
 - Docker Compose reads the existing `.env` file automatically.
-- Swagger is available at `http://localhost/docs/` when `DJANGO_DEBUG=True`.
+- Swagger is available at `http://localhost:8000/docs/` when `DJANGO_DEBUG=True`.
 
 ## Account API
 
