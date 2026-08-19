@@ -48,6 +48,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 - MinIO console is available on `http://localhost:9001/`.
 - Docker Compose reads the existing `.env` file automatically.
 - Swagger is available at `http://localhost:8000/docs/` when `DJANGO_DEBUG=True`.
+- In Docker, uploads use internal `MINIO_ENDPOINT=minio:9000`, while download links use `MINIO_PUBLIC_ENDPOINT`, defaulting to `localhost:9000`.
 
 ## Account API
 

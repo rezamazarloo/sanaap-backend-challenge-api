@@ -11,7 +11,7 @@ from document.pagination import DocumentPagination
 from document.permissions import DocumentPermission
 from document.serializers import AllDocumentListSerializer, DocumentListSerializer
 from document.services import DocumentService
-from document.storage import build_attachment_content_disposition
+from document.storage import MinioStorage, build_attachment_content_disposition
 from document.validators import UploadedFileValidator, ValidatedUpload
 from document.views import AllDocumentListView, DocumentListCreateView
 
@@ -96,6 +96,54 @@ class ObjectStorageTests(SimpleTestCase):
             "filename*=UTF-8''avatar%20%D8%B4%D9%85%D8%A7%D8%B1%D9%87.png",
             header,
         )
+
+    def test_minio_storage_uses_presign_client_for_download_urls(self):
+        presign_client = FakePresignClient()
+        storage = MinioStorage(
+            client=SimpleNamespace(),
+            presign_client=presign_client,
+        )
+
+        url = storage.generate_download_url(
+            object_key="documents/42/avatar.png",
+            expires_in=120,
+            filename="avatar.png",
+            content_type="image/png",
+        )
+
+        self.assertEqual(url, "http://localhost:9000/documents/42/avatar.png")
+        self.assertEqual(presign_client.calls[0]["bucket_name"], "documents")
+        self.assertEqual(
+            presign_client.calls[0]["object_name"],
+            "documents/42/avatar.png",
+        )
+        self.assertIn(
+            "response-content-disposition",
+            presign_client.calls[0]["response_headers"],
+        )
+
+
+class FakePresignClient:
+    def __init__(self):
+        self.calls = []
+
+    def presigned_get_object(
+        self,
+        *,
+        bucket_name,
+        object_name,
+        expires,
+        response_headers=None,
+    ):
+        self.calls.append(
+            {
+                "bucket_name": bucket_name,
+                "object_name": object_name,
+                "expires": expires,
+                "response_headers": response_headers,
+            }
+        )
+        return "http://localhost:9000/documents/42/avatar.png"
 
 
 class FakeStorage:

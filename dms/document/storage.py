@@ -50,7 +50,9 @@ class ObjectStorage(ABC):
 
 class MinioClientFactory:
     _client = None
+    _presign_client = None
     _lock = Lock()
+    _presign_lock = Lock()
 
     @classmethod
     def get_client(cls) -> Minio:
@@ -58,20 +60,51 @@ class MinioClientFactory:
             with cls._lock:
                 if cls._client is None:
                     minio_config = settings.MINIO
-                    cls._client = Minio(
+                    cls._client = cls._build_client(
                         endpoint=minio_config["endpoint"],
-                        access_key=minio_config["access_key"],
-                        secret_key=minio_config["secret_key"],
                         secure=minio_config["secure"],
                     )
 
         return cls._client
 
+    @classmethod
+    def get_presign_client(cls) -> Minio:
+        minio_config = settings.MINIO
+        public_endpoint = minio_config.get("public_endpoint")
+        if not public_endpoint:
+            return cls.get_client()
+
+        if cls._presign_client is None:
+            with cls._presign_lock:
+                if cls._presign_client is None:
+                    cls._presign_client = cls._build_client(
+                        endpoint=public_endpoint,
+                        secure=minio_config["public_secure"],
+                    )
+
+        return cls._presign_client
+
+    @classmethod
+    def _build_client(cls, *, endpoint: str, secure: bool) -> Minio:
+        minio_config = settings.MINIO
+        return Minio(
+            endpoint=endpoint,
+            access_key=minio_config["access_key"],
+            secret_key=minio_config["secret_key"],
+            secure=secure,
+            region=minio_config["region"],
+        )
+
 
 class MinioStorage(ObjectStorage):
-    def __init__(self, client: Minio | None = None):
+    def __init__(
+        self,
+        client: Minio | None = None,
+        presign_client: Minio | None = None,
+    ):
         minio_config = settings.MINIO
         self.client = client or MinioClientFactory.get_client()
+        self.presign_client = presign_client or MinioClientFactory.get_presign_client()
         self.bucket = minio_config["bucket"]
         self._default_expiration = minio_config["presigned_url_expiration"]
         self._bucket_ready = False
@@ -127,7 +160,7 @@ class MinioStorage(ObjectStorage):
             response_headers["response-content-type"] = content_type
 
         try:
-            return self.client.presigned_get_object(
+            return self.presign_client.presigned_get_object(
                 bucket_name=self.bucket,
                 object_name=object_key,
                 expires=timedelta(seconds=expires_in or self.default_expiration),

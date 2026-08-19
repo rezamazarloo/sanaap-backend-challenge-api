@@ -59,6 +59,7 @@ DATABASES = {
 
 MINIO = {
     "endpoint": os.getenv("MINIO_ENDPOINT", "localhost:9000"),
+    "public_endpoint": os.getenv("MINIO_PUBLIC_ENDPOINT"),
     "access_key": os.getenv(
         "MINIO_ACCESS_KEY", os.getenv("MINIO_ROOT_USER", "minioadmin")
     ),
@@ -67,6 +68,11 @@ MINIO = {
     ),
     "bucket": os.getenv("MINIO_BUCKET", "documents"),
     "secure": os.getenv("MINIO_SECURE", "True").lower() == "true",
+    "public_secure": os.getenv(
+        "MINIO_PUBLIC_SECURE", os.getenv("MINIO_SECURE", "True")
+    ).lower()
+    == "true",
+    "region": os.getenv("MINIO_REGION", "us-east-1"),
     "presigned_url_expiration": int(os.getenv("MINIO_PRESIGNED_URL_EXPIRATION", "300")),
 }
 
