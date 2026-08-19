@@ -1,4 +1,21 @@
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - backend
+
   app:
     build:
       context: .
@@ -29,8 +46,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    ports:
-      - "${DJANGO_PORT:-8000}:8000"
+    expose:
+      - "8000"
     networks:
       - backend
 
@@ -60,9 +77,9 @@ services:
     command: server --address ':9000' --console-address ':9001' /data
     volumes:
       - minio_prod_data:/data
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    expose:
+      - "9000"
+      - "9001"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
       interval: 10s

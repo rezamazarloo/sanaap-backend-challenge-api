@@ -36,18 +36,19 @@ uv run python dms/manage.py seed_document_types
 
 ## Production Docker
 
-The development `docker-compose.yml` is unchanged. Production uses Gunicorn for Django:
+The development `docker-compose.yml` is unchanged. Production uses nginx as the public reverse proxy and Gunicorn for Django:
 
 ```powershell
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-- `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, `create_default_superuser`, and `seed_document_types`, then publishes Gunicorn on host port `8000`.
-- Django is available on `http://localhost:8000/`.
-- MinIO is available on `http://localhost:9000/`.
-- MinIO console is available on `http://localhost:9001/`.
+- `nginx` publishes the public ports and proxies to the private Docker upstreams.
+- `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, `create_default_superuser`, and `seed_document_types`, then serves Gunicorn internally on port `8000`.
+- Django is available through nginx on `http://localhost/`.
+- MinIO S3 API is available through nginx on `http://localhost:9000/`.
+- MinIO console is available through nginx on `http://localhost:9001/`.
 - Docker Compose reads the existing `.env` file automatically.
-- Swagger is available at `http://localhost:8000/docs/` when `DJANGO_DEBUG=True`.
+- Swagger is available at `http://localhost/docs/` when `DJANGO_DEBUG=True`.
 - In Docker, uploads use internal `MINIO_ENDPOINT=minio:9000`, while download links use `MINIO_PUBLIC_ENDPOINT`, defaulting to `localhost:9000`.
 
 ## Account API
