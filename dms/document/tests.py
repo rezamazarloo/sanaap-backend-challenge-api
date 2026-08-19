@@ -7,11 +7,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase
 from django.utils import timezone
 from document.models import DocumentType
+from document.pagination import DocumentPagination
 from document.permissions import DocumentPermission
 from document.serializers import AllDocumentListSerializer, DocumentListSerializer
 from document.services import DocumentService
 from document.storage import build_attachment_content_disposition
 from document.validators import UploadedFileValidator, ValidatedUpload
+from document.views import AllDocumentListView, DocumentListCreateView
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 128
 
@@ -22,6 +24,27 @@ class FakeUser:
 
     def __str__(self):
         return self.username
+
+
+class DocumentPaginationTests(SimpleTestCase):
+    def test_document_pagination_defaults(self):
+        self.assertEqual(DocumentPagination.page_size, 10)
+        self.assertEqual(DocumentPagination.page_size_query_param, "page_size")
+        self.assertEqual(DocumentPagination.max_page_size, 100)
+
+
+class DocumentListFilterConfigTests(SimpleTestCase):
+    def test_current_user_document_list_uses_drf_filter_backends(self):
+        self.assertIn("document_type", DocumentListCreateView.filterset_fields)
+        self.assertIn("document_type__code", DocumentListCreateView.filterset_fields)
+        self.assertIn("content_type", DocumentListCreateView.filterset_fields)
+        self.assertIn("created_at", DocumentListCreateView.filterset_fields)
+        self.assertEqual(DocumentListCreateView.search_fields, ["original_filename"])
+        self.assertIn("size", DocumentListCreateView.ordering_fields)
+
+    def test_all_document_list_adds_owner_and_uploader_filters(self):
+        self.assertIn("user", AllDocumentListView.filterset_fields)
+        self.assertIn("uploaded_by", AllDocumentListView.filterset_fields)
 
 
 class UploadedFileValidatorTests(SimpleTestCase):

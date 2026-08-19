@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
+from document.mixins import DocumentListFilterMixin
 from document.models import Document, DocumentType
+from document.pagination import DocumentPagination
 from document.permissions import (
     CanAddDocument,
     CanViewDocuments,
@@ -100,11 +102,19 @@ class DocumentUploadMixin:
         tags=[DOCUMENTS_TAG],
     ),
 )
-class DocumentListCreateView(DocumentUploadMixin, generics.ListCreateAPIView):
+class DocumentListCreateView(
+    DocumentUploadMixin,
+    DocumentListFilterMixin,
+    generics.ListCreateAPIView,
+):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
+    pagination_class = DocumentPagination
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Document.objects.none()
+
         return Document.objects.select_related("document_type").filter(
             user=self.request.user
         )
@@ -128,9 +138,15 @@ class DocumentListCreateView(DocumentUploadMixin, generics.ListCreateAPIView):
     },
     tags=[DOCUMENTS_TAG],
 )
-class AllDocumentListView(generics.ListAPIView):
+class AllDocumentListView(DocumentListFilterMixin, generics.ListAPIView):
     serializer_class = AllDocumentListSerializer
     permission_classes = [IsAuthenticated, CanViewDocuments]
+    pagination_class = DocumentPagination
+    filterset_fields = {
+        **DocumentListFilterMixin.filterset_fields,
+        "user": ["exact"],
+        "uploaded_by": ["exact"],
+    }
 
     def get_queryset(self):
         return Document.objects.select_related(
