@@ -174,6 +174,14 @@ class DocumentServiceTests(SimpleTestCase):
 
         self.assertEqual(storage.deleted_keys, storage.uploaded_keys)
 
+    def test_generate_object_key_uses_only_user_namespace(self):
+        object_key = DocumentService(storage=FakeStorage())._generate_object_key(
+            user_id=42,
+            extension="png",
+        )
+
+        self.assertRegex(object_key, r"^documents/42/[a-f0-9]{32}\.png$")
+
     def test_replace_updates_document_and_deletes_previous_object(self):
         storage = FakeStorage()
         service = DocumentService(storage=storage)

@@ -2,7 +2,6 @@ import logging
 from uuid import uuid4
 
 from django.db import transaction
-from django.utils import timezone
 from document.models import Document
 from document.storage import ObjectStorage, ObjectStorageError, get_object_storage
 from document.validators import ValidatedUpload
@@ -141,10 +140,7 @@ class DocumentService:
         )
 
     def _generate_object_key(self, *, user_id, extension):
-        uploaded_at = timezone.now()
-        return (
-            f"documents/{user_id}/{uploaded_at:%Y/%m/%d}/" f"{uuid4().hex}.{extension}"
-        )
+        return f"documents/{user_id}/{uuid4().hex}.{extension}"
 
     def _rollback_uploaded_object(self, object_key):
         try:
