@@ -20,7 +20,12 @@ from document.serializers import (
 )
 from document.services import DocumentService
 from document.storage import ObjectStorageError
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiRequest,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from rest_framework import generics, status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -29,6 +34,23 @@ from rest_framework.response import Response
 
 DOCUMENTS_TAG = "Documents"
 DOCUMENT_TYPES_TAG = "Document Types"
+
+DOCUMENT_UPLOAD_REQUEST = {
+    "multipart/form-data": OpenApiRequest(
+        request=DocumentUploadSerializer,
+        encoding={
+            "file": {"contentType": "application/octet-stream"},
+        },
+    )
+}
+DOCUMENT_REPLACE_REQUEST = {
+    "multipart/form-data": OpenApiRequest(
+        request=DocumentReplaceSerializer,
+        encoding={
+            "file": {"contentType": "application/octet-stream"},
+        },
+    )
+}
 
 UNAUTHORIZED_RESPONSE = OpenApiResponse(
     description="Authentication credentials were not provided or are invalid."
@@ -88,7 +110,7 @@ class DocumentUploadMixin:
     post=extend_schema(
         summary="Upload document",
         description="Upload a document for the authenticated user.",
-        request=DocumentUploadSerializer,
+        request=DOCUMENT_UPLOAD_REQUEST,
         responses={
             status.HTTP_201_CREATED: DocumentListSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
@@ -163,7 +185,7 @@ class AllDocumentListView(DocumentListFilterMixin, generics.ListAPIView):
             "Upload a document owned by a specific user. "
             "Requires `document.add_document`."
         ),
-        request=DocumentUploadSerializer,
+        request=DOCUMENT_UPLOAD_REQUEST,
         responses={
             status.HTTP_201_CREATED: AllDocumentListSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
@@ -224,7 +246,7 @@ class UserDocumentCreateView(DocumentUploadMixin, generics.CreateAPIView):
             "Upload a replacement file for an existing document. Owners can replace "
             "their own documents; other documents require `document.change_document`."
         ),
-        request=DocumentReplaceSerializer,
+        request=DOCUMENT_REPLACE_REQUEST,
         responses={
             status.HTTP_200_OK: DocumentListSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
