@@ -28,6 +28,20 @@ Seed the initial document types:
 uv run python dms/manage.py seed_document_types
 ```
 
+## Production Docker
+
+The development `docker-compose.yml` is unchanged. Production uses Gunicorn behind Nginx:
+
+```powershell
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, and `seed_document_types`, then publishes Gunicorn only on host `127.0.0.1:8000`.
+- `nginx` publishes HTTP port `80` and proxies traffic through the Docker network.
+- Nginx proxies all HTTP traffic to the Django app.
+- Docker Compose reads the existing `.env` file automatically.
+- Swagger is available at `http://localhost/docs/` when `DJANGO_DEBUG=True`.
+
 ## Account API
 
 - `POST /api/v1/account/auth/signup/` creates a public user account with `username` and `password`.
