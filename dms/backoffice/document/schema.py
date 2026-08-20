@@ -1,8 +1,9 @@
 from backoffice.document.serializers import (
     BackofficeDocumentDetailSerializer,
+    BackofficeDocumentListSerializer,
     BackofficeDocumentUploadSerializer,
 )
-from document.serializers import AllDocumentListSerializer, DocumentReplaceSerializer
+from document.serializers import DocumentReplaceSerializer
 from drf_spectacular.utils import (
     OpenApiRequest,
     OpenApiResponse,
@@ -48,7 +49,7 @@ BACKOFFICE_DOCUMENT_LIST_CREATE_SCHEMA = extend_schema_view(
             "Requires `document.view_document`."
         ),
         responses={
-            status.HTTP_200_OK: AllDocumentListSerializer(many=True),
+            status.HTTP_200_OK: BackofficeDocumentListSerializer(many=True),
             status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
             status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
         },
@@ -63,7 +64,7 @@ BACKOFFICE_DOCUMENT_LIST_CREATE_SCHEMA = extend_schema_view(
         ),
         request=BACKOFFICE_DOCUMENT_UPLOAD_REQUEST,
         responses={
-            status.HTTP_201_CREATED: AllDocumentListSerializer,
+            status.HTTP_201_CREATED: BackofficeDocumentListSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid upload data."
             ),
@@ -104,7 +105,7 @@ BACKOFFICE_DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
         ),
         request=BACKOFFICE_DOCUMENT_REPLACE_REQUEST,
         responses={
-            status.HTTP_200_OK: AllDocumentListSerializer,
+            status.HTTP_200_OK: BackofficeDocumentListSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid document data."
             ),

@@ -5,13 +5,14 @@ from backoffice.document.schema import (
 )
 from backoffice.document.serializers import (
     BackofficeDocumentDetailSerializer,
+    BackofficeDocumentListSerializer,
     BackofficeDocumentUploadSerializer,
 )
 from document.exceptions import StorageUnavailable
 from document.mixins import DocumentListFilterMixin
 from document.models import Document
 from document.pagination import DocumentPagination
-from document.serializers import AllDocumentListSerializer, DocumentReplaceSerializer
+from document.serializers import DocumentReplaceSerializer
 from document.services import DocumentService
 from document.storage import ObjectStorageError
 from rest_framework import status
@@ -45,7 +46,7 @@ class BackofficeDocumentListCreateView(
     def get_serializer_class(self):
         if self.request.method == "POST":
             return BackofficeDocumentUploadSerializer
-        return AllDocumentListSerializer
+        return BackofficeDocumentListSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -63,7 +64,7 @@ class BackofficeDocumentListCreateView(
             raise StorageUnavailable() from exc
 
         return Response(
-            AllDocumentListSerializer(document).data,
+            BackofficeDocumentListSerializer(document).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -117,7 +118,7 @@ class BackofficeDocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
         except ObjectStorageError as exc:
             raise StorageUnavailable() from exc
 
-        return Response(AllDocumentListSerializer(document).data)
+        return Response(BackofficeDocumentListSerializer(document).data)
 
     def destroy(self, request, *args, **kwargs):
         document = self.get_object()

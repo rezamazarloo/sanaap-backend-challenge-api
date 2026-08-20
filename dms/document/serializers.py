@@ -148,32 +148,6 @@ class DocumentListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class AllDocumentListSerializer(serializers.ModelSerializer):
-    document_type = DocumentTypeSerializer(read_only=True)
-    user = serializers.StringRelatedField(read_only=True)
-    user_id = serializers.IntegerField(read_only=True)
-    uploaded_by = serializers.StringRelatedField(read_only=True)
-    uploaded_by_id = serializers.IntegerField(read_only=True)
-
-    class Meta:
-        model = Document
-        fields = (
-            "id",
-            "document_type",
-            "user",
-            "user_id",
-            "original_filename",
-            "content_type",
-            "size",
-            "checksum",
-            "uploaded_by",
-            "uploaded_by_id",
-            "created_at",
-            "updated_at",
-        )
-        read_only_fields = fields
-
-
 class DocumentUploadSerializer(serializers.Serializer):
     document_type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentType.objects.filter(is_active=True),
