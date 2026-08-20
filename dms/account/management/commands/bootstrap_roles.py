@@ -50,27 +50,21 @@ class Command(BaseCommand):
 
             permissions = [self._get_permission(spec) for spec in permission_specs]
             existing_permission_ids = set(
-                group.permissions.filter(
-                    id__in=[permission.id for permission in permissions],
-                ).values_list("id", flat=True)
+                group.permissions.values_list("id", flat=True)
             )
-            missing_permissions = [
-                permission
-                for permission in permissions
-                if permission.id not in existing_permission_ids
-            ]
+            desired_permission_ids = {permission.id for permission in permissions}
 
-            if missing_permissions:
-                group.permissions.add(*missing_permissions)
+            if existing_permission_ids != desired_permission_ids:
+                group.permissions.set(permissions)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f"Added {len(missing_permissions)} permission(s) "
-                        f"to group '{group_name}'."
+                        f"Set {len(permissions)} permission(s) for group "
+                        f"'{group_name}'."
                     )
                 )
             else:
                 self.stdout.write(
-                    f"Group '{group_name}' already has all required permissions; "
+                    f"Group '{group_name}' already has the expected permissions; "
                     "skipped."
                 )
 
