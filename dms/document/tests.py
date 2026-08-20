@@ -67,7 +67,6 @@ class DocumentServiceTests(SimpleTestCase):
         owner = make_user(42)
 
         with (
-            patch("document.services.transaction.atomic", return_value=nullcontext()),
             patch(
                 "document.services.Document.objects.create",
                 side_effect=RuntimeError("db down"),

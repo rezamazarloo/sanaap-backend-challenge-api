@@ -45,17 +45,16 @@ class DocumentService:
         )
 
         try:
-            with transaction.atomic():
-                return Document.objects.create(
-                    document_type=document_type,
-                    user=user,
-                    original_filename=validated_upload.original_filename,
-                    object_key=object_key,
-                    content_type=validated_upload.content_type,
-                    size=validated_upload.size,
-                    checksum=validated_upload.checksum,
-                    uploaded_by=uploaded_by,
-                )
+            return Document.objects.create(
+                document_type=document_type,
+                user=user,
+                original_filename=validated_upload.original_filename,
+                object_key=object_key,
+                content_type=validated_upload.content_type,
+                size=validated_upload.size,
+                checksum=validated_upload.checksum,
+                uploaded_by=uploaded_by,
+            )
         except Exception:
             self._rollback_uploaded_object(object_key)
             raise
