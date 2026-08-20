@@ -6,14 +6,14 @@ import filetype
 from django.core.exceptions import ValidationError
 
 EXTENSION_CONTENT_TYPES = {
-    "csv": {"text/csv", "text/plain"},
-    "gif": {"image/gif"},
+    "csv": {"text/csv"},
+    "docx": {"application/vnd.openxmlformats-officedocument.wordprocessingml.document"},
     "jpg": {"image/jpeg"},
     "jpeg": {"image/jpeg"},
     "pdf": {"application/pdf"},
     "png": {"image/png"},
-    "txt": {"text/plain"},
     "webp": {"image/webp"},
+    "xlsx": {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
 }
 
 EXTENSION_ALIASES = {
@@ -21,10 +21,10 @@ EXTENSION_ALIASES = {
     "jpeg": {"jpg", "jpeg"},
 }
 
-TEXT_EXTENSIONS = {"csv", "txt"}
+IMAGE_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+TEXT_EXTENSIONS = {"csv"}
 TEXT_EXTENSION_CONTENT_TYPES = {
     "csv": "text/csv",
-    "txt": "text/plain",
 }
 SNIFF_BYTES = 8192
 
@@ -36,6 +36,38 @@ class ValidatedUpload:
     content_type: str
     size: int
     checksum: str
+
+
+def normalize_extensions(extensions):
+    return {extension.lower().lstrip(".") for extension in extensions or []}
+
+
+def normalize_content_types(content_types):
+    return {content_type.lower() for content_type in content_types or []}
+
+
+def content_types_for_extensions(extensions):
+    content_types = set()
+    for extension in normalize_extensions(extensions):
+        content_types.update(EXTENSION_CONTENT_TYPES.get(extension, set()))
+    return content_types
+
+
+def document_type_content_types(document_type):
+    configured_content_types = normalize_content_types(
+        getattr(document_type, "allowed_content_types", [])
+    )
+    if configured_content_types:
+        return configured_content_types
+
+    return content_types_for_extensions(
+        getattr(document_type, "allowed_extensions", [])
+    )
+
+
+def is_image_document_type(document_type):
+    content_types = document_type_content_types(document_type)
+    return bool(content_types) and content_types.issubset(IMAGE_CONTENT_TYPES)
 
 
 class UploadedFileValidator:
@@ -97,23 +129,16 @@ class UploadedFileValidator:
         return extension
 
     def _allowed_extensions(self, document_type):
-        return {
-            extension.lower().lstrip(".")
-            for extension in document_type.allowed_extensions
-        }
+        return normalize_extensions(document_type.allowed_extensions)
 
     def _allowed_content_types(self, document_type, allowed_extensions):
-        configured_content_types = {
-            content_type.lower()
-            for content_type in document_type.allowed_content_types or []
-        }
+        configured_content_types = normalize_content_types(
+            document_type.allowed_content_types
+        )
         if configured_content_types:
             return configured_content_types
 
-        derived_content_types = set()
-        for extension in allowed_extensions:
-            derived_content_types.update(EXTENSION_CONTENT_TYPES.get(extension, set()))
-        return derived_content_types
+        return content_types_for_extensions(allowed_extensions)
 
     def _inspect(self, uploaded_file):
         digest = hashlib.sha256()

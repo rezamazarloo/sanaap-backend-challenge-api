@@ -1,8 +1,11 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from document.models import Document, DocumentType
-from document.validators import EXTENSION_CONTENT_TYPES, UploadedFileValidator
+from document.validators import (
+    EXTENSION_CONTENT_TYPES,
+    UploadedFileValidator,
+    content_types_for_extensions,
+)
 from rest_framework import serializers
-
 
 AVAILABLE_EXTENSIONS = sorted(EXTENSION_CONTENT_TYPES)
 AVAILABLE_CONTENT_TYPES = sorted(
@@ -12,18 +15,28 @@ AVAILABLE_CONTENT_TYPES = sorted(
         for content_type in content_types
     }
 )
+EXTENSION_CONTENT_TYPE_HELP = "; ".join(
+    f".{extension}: {', '.join(sorted(content_types))}"
+    for extension, content_types in sorted(EXTENSION_CONTENT_TYPES.items())
+)
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     allowed_extensions = serializers.ListField(
         child=serializers.ChoiceField(choices=AVAILABLE_EXTENSIONS),
-        help_text="Allowed file extensions for this document type.",
+        help_text=(
+            "Allowed file extensions for this document type. "
+            f"Available values: {', '.join(AVAILABLE_EXTENSIONS)}."
+        ),
     )
     allowed_content_types = serializers.ListField(
         child=serializers.ChoiceField(choices=AVAILABLE_CONTENT_TYPES),
         required=False,
         allow_empty=True,
-        help_text="Allowed server-detected MIME types for this document type.",
+        help_text=(
+            "Allowed server-detected MIME types for this document type. "
+            f"Available values by extension: {EXTENSION_CONTENT_TYPE_HELP}."
+        ),
     )
 
     class Meta:
@@ -63,6 +76,44 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"allowed_extensions": "At least one extension is required."}
             )
+
+        allowed_content_types = attrs.get(
+            "allowed_content_types",
+            getattr(self.instance, "allowed_content_types", []),
+        )
+        if allowed_content_types:
+            related_content_types = content_types_for_extensions(allowed_extensions)
+            unrelated_content_types = sorted(
+                set(allowed_content_types) - related_content_types
+            )
+            if unrelated_content_types:
+                raise serializers.ValidationError(
+                    {
+                        "allowed_content_types": (
+                            "Content types must match the selected extensions. "
+                            f"Invalid values: {', '.join(unrelated_content_types)}."
+                        )
+                    }
+                )
+
+            uncovered_extensions = [
+                extension
+                for extension in allowed_extensions
+                if not (
+                    EXTENSION_CONTENT_TYPES.get(extension, set())
+                    & set(allowed_content_types)
+                )
+            ]
+            if uncovered_extensions:
+                raise serializers.ValidationError(
+                    {
+                        "allowed_content_types": (
+                            "Each selected extension must have at least one related "
+                            "content type. Missing content types for: "
+                            f"{', '.join(uncovered_extensions)}."
+                        )
+                    }
+                )
 
         return attrs
 
