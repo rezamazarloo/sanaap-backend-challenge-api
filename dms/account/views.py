@@ -19,12 +19,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import generics, status
+from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 
 AUTH_TAG = "Authentication"
 USERS_TAG = "Users"
@@ -36,7 +36,9 @@ UNAUTHORIZED_RESPONSE = OpenApiResponse(
 FORBIDDEN_RESPONSE = OpenApiResponse(
     description="The authenticated user does not have the required permission."
 )
-NOT_FOUND_RESPONSE = OpenApiResponse(description="The requested resource was not found.")
+NOT_FOUND_RESPONSE = OpenApiResponse(
+    description="The requested resource was not found."
+)
 
 
 class SignupView(APIView):
@@ -131,7 +133,7 @@ class LogoutView(APIView):
         tags=[USERS_TAG],
     ),
 )
-class UserListCreateView(generics.ListCreateAPIView):
+class UserListCreateView(ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "POST":
             return [IsAuthenticated(), CanCreateUser()]
@@ -166,7 +168,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     },
     tags=[USERS_TAG],
 )
-class UserDetailView(generics.RetrieveAPIView):
+class UserDetailView(RetrieveAPIView):
     serializer_class = UserDetailSerializer
     permission_classes = [IsAuthenticated, CanViewUser]
     lookup_url_kwarg = "user_id"
@@ -185,13 +187,13 @@ class UserDetailView(generics.RetrieveAPIView):
     },
     tags=[GROUPS_TAG],
 )
-class GroupListView(generics.ListAPIView):
+class GroupListView(ListAPIView):
     queryset = Group.objects.order_by("name")
     serializer_class = GroupListSerializer
     permission_classes = [IsAuthenticated, CanViewGroup]
 
 
-class AssignUserGroupView(APIView):
+class UserGroupAssignView(APIView):
     permission_classes = [IsAuthenticated, CanAssignUserGroup]
 
     @extend_schema(
