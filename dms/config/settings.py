@@ -23,6 +23,8 @@ INSTALLED_APPS = [
     "drf_spectacular",
     # Local apps
     "account.apps.AccountConfig",
+    "backoffice.apps.BackofficeConfig",
+    "backoffice.document.apps.BackofficeDocumentConfig",
     "document.apps.DocumentConfig",
 ]
 
