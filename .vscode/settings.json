@@ -11,6 +11,9 @@
   "black-formatter.args": [
     "--line-length=88"
   ],
-  "editor.guides.bracketPairs": true,
+  "python.analysis.extraPaths": [
+    "./dms"
+  ],
+  "editor.guides.bracketPairs": true
 
 }
