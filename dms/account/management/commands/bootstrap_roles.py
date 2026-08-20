@@ -19,8 +19,8 @@ ROLE_PERMISSION_SPECS = {
         ("document", "documenttype", "view_documenttype"),
     ],
     "editor": [
-        ("document", "document", "add_document"),
-        ("document", "document", "change_document"),
+        ("document", "document", "add_image_document"),
+        ("document", "document", "change_image_document"),
         ("document", "document", "view_document"),
     ],
     "viewer": [

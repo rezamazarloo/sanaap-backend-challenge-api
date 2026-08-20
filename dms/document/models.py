@@ -44,6 +44,10 @@ class Document(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        permissions = [
+            ("add_image_document", "Can add image documents"),
+            ("change_image_document", "Can change image documents"),
+        ]
 
     def __str__(self):
         return self.original_filename
