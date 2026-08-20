@@ -65,12 +65,18 @@ docker compose -f docker-compose.prod.yml up -d --build
 ## Document API
 
 - `GET /api/v1/documents/` lists documents owned by the authenticated user.
-- `POST /api/v1/documents/` uploads a document for the authenticated user.
-- `GET /api/v1/documents/all/` lists all documents for users with `document.view_document`.
-- `POST /api/v1/documents/users/<user_id>/` uploads a document for a user; requires `document.add_document`.
-- `GET /api/v1/documents/<document_id>/` returns metadata and a presigned download URL.
-- `PUT /api/v1/documents/<document_id>/` replaces the stored file.
-- `DELETE /api/v1/documents/<document_id>/` deletes a document.
+- `POST /api/v1/documents/` uploads a document owned by the authenticated user.
+- `GET /api/v1/documents/<document_id>/` returns metadata and a presigned download URL only when the document belongs to the authenticated user.
+- `PUT /api/v1/documents/<document_id>/` replaces the authenticated user's own document.
+- `DELETE /api/v1/documents/<document_id>/` deletes the authenticated user's own document.
+
+## Backoffice Document API
+
+- `GET /api/v1/backoffice/documents/` lists all documents and supports filtering by document/user fields; requires `document.view_document`.
+- `POST /api/v1/backoffice/documents/` uploads a document for the `user_id` supplied in the request body; requires `document.add_document`, or `document.add_image_document` for image-only document types.
+- `GET /api/v1/backoffice/documents/<document_id>/` returns full document details and a presigned download URL; requires `document.view_document`.
+- `PUT /api/v1/backoffice/documents/<document_id>/` replaces any user's document; requires `document.change_document`, or `document.change_image_document` when both the current and target document types are image-only.
+- `DELETE /api/v1/backoffice/documents/<document_id>/` deletes any user's document; requires `document.delete_document`.
 
 ## Document Type API
 
