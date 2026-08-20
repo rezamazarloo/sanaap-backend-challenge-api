@@ -4,11 +4,18 @@ from account.permissions import (
     CanViewGroup,
     CanViewUser,
 )
+from account.schema import (
+    GROUP_LIST_SCHEMA,
+    LOGIN_POST_SCHEMA,
+    LOGOUT_POST_SCHEMA,
+    SIGNUP_POST_SCHEMA,
+    USER_DETAIL_SCHEMA,
+    USER_GROUP_ASSIGN_POST_SCHEMA,
+    USER_LIST_CREATE_SCHEMA,
+)
 from account.serializers import (
     AssignUserGroupSerializer,
     GroupListSerializer,
-    LoginResponseSerializer,
-    LoginSerializer,
     SignupResponseSerializer,
     SignupSerializer,
     UserCreateSerializer,
@@ -18,7 +25,6 @@ from account.serializers import (
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView
@@ -26,37 +32,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-AUTH_TAG = "Authentication"
-USERS_TAG = "Users"
-GROUPS_TAG = "Groups"
-
-UNAUTHORIZED_RESPONSE = OpenApiResponse(
-    description="Authentication credentials were not provided or are invalid."
-)
-FORBIDDEN_RESPONSE = OpenApiResponse(
-    description="The authenticated user does not have the required permission."
-)
-NOT_FOUND_RESPONSE = OpenApiResponse(
-    description="The requested resource was not found."
-)
-
 
 class SignupView(APIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(
-        auth=[],
-        summary="Create account",
-        description="Register a new user account with a username and password.",
-        request=SignupSerializer,
-        responses={
-            status.HTTP_201_CREATED: SignupResponseSerializer,
-            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-                description="Invalid signup data."
-            ),
-        },
-        tags=[AUTH_TAG],
-    )
+    @SIGNUP_POST_SCHEMA
     def post(self, request):
         serializer = SignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -70,19 +50,7 @@ class SignupView(APIView):
 class LoginView(ObtainAuthToken):
     permission_classes = [AllowAny]
 
-    @extend_schema(
-        auth=[],
-        summary="Log in",
-        description="Exchange a username and password for an authentication token.",
-        request=LoginSerializer,
-        responses={
-            status.HTTP_200_OK: LoginResponseSerializer,
-            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-                description="Invalid username or password."
-            ),
-        },
-        tags=[AUTH_TAG],
-    )
+    @LOGIN_POST_SCHEMA
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
@@ -90,49 +58,13 @@ class LoginView(ObtainAuthToken):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        summary="Log out",
-        description="Delete the authenticated user's token.",
-        request=None,
-        responses={
-            status.HTTP_204_NO_CONTENT: OpenApiResponse(description="Logged out."),
-            status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-        },
-        tags=[AUTH_TAG],
-    )
+    @LOGOUT_POST_SCHEMA
     def post(self, request):
         request.user.auth_token.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@extend_schema_view(
-    get=extend_schema(
-        summary="List users",
-        description=(
-            "Return users with lightweight fields. Requires `auth.view_user`."
-        ),
-        responses={
-            status.HTTP_200_OK: UserListSerializer(many=True),
-            status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-            status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-        },
-        tags=[USERS_TAG],
-    ),
-    post=extend_schema(
-        summary="Create user",
-        description="Create a new user account. Requires `auth.add_user`.",
-        request=UserCreateSerializer,
-        responses={
-            status.HTTP_201_CREATED: UserDetailSerializer,
-            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-                description="Invalid user data."
-            ),
-            status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-            status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-        },
-        tags=[USERS_TAG],
-    ),
-)
+@USER_LIST_CREATE_SCHEMA
 class UserListCreateView(ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -157,17 +89,7 @@ class UserListCreateView(ListCreateAPIView):
         )
 
 
-@extend_schema(
-    summary="Get user",
-    description="Return a single user with group membership. Requires `auth.view_user`.",
-    responses={
-        status.HTTP_200_OK: UserDetailSerializer,
-        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-        status.HTTP_404_NOT_FOUND: NOT_FOUND_RESPONSE,
-    },
-    tags=[USERS_TAG],
-)
+@USER_DETAIL_SCHEMA
 class UserDetailView(RetrieveAPIView):
     serializer_class = UserDetailSerializer
     permission_classes = [IsAuthenticated, CanViewUser]
@@ -177,16 +99,7 @@ class UserDetailView(RetrieveAPIView):
         return get_user_model().objects.prefetch_related("groups").order_by("id")
 
 
-@extend_schema(
-    summary="List groups",
-    description="Return available user groups. Requires `auth.view_group`.",
-    responses={
-        status.HTTP_200_OK: GroupListSerializer(many=True),
-        status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-        status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-    },
-    tags=[GROUPS_TAG],
-)
+@GROUP_LIST_SCHEMA
 class GroupListView(ListAPIView):
     queryset = Group.objects.order_by("name")
     serializer_class = GroupListSerializer
@@ -196,25 +109,7 @@ class GroupListView(ListAPIView):
 class UserGroupAssignView(APIView):
     permission_classes = [IsAuthenticated, CanAssignUserGroup]
 
-    @extend_schema(
-        summary="Assign user to group",
-        description=(
-            "Add an existing user to an existing group. Requires `auth.change_user`."
-        ),
-        request=AssignUserGroupSerializer,
-        responses={
-            status.HTTP_200_OK: UserDetailSerializer,
-            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
-                description="Invalid group data."
-            ),
-            status.HTTP_404_NOT_FOUND: OpenApiResponse(
-                description="User or group not found."
-            ),
-            status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-            status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-        },
-        tags=[USERS_TAG],
-    )
+    @USER_GROUP_ASSIGN_POST_SCHEMA
     def post(self, request, user_id):
         user = get_object_or_404(
             get_user_model().objects.prefetch_related("groups"),
