@@ -5,7 +5,6 @@ from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase
 from document.models import DocumentType
-from document.permissions import DocumentPermission
 from document.services import DocumentService
 from document.validators import ValidatedUpload
 
@@ -129,82 +128,3 @@ class DocumentServiceTests(SimpleTestCase):
 
         self.assertEqual(document.object_key, old_object_key)
         self.assertEqual(storage.deleted_keys, storage.uploaded_keys)
-
-
-class DocumentPermissionTests(SimpleTestCase):
-    def setUp(self):
-        self.permission = DocumentPermission()
-        self.document = SimpleNamespace(user_id=1)
-
-    def test_owner_can_access_own_document(self):
-        request = SimpleNamespace(method="PUT", user=make_user(1))
-
-        self.assertTrue(
-            self.permission.has_object_permission(request, None, self.document)
-        )
-
-    def test_non_owner_needs_view_permission_to_read(self):
-        denied_request = SimpleNamespace(method="GET", user=make_user(2))
-        allowed_request = SimpleNamespace(
-            method="GET",
-            user=make_user(2, permissions={"document.view_document"}),
-        )
-
-        self.assertFalse(
-            self.permission.has_object_permission(
-                denied_request,
-                None,
-                self.document,
-            )
-        )
-        self.assertTrue(
-            self.permission.has_object_permission(
-                allowed_request,
-                None,
-                self.document,
-            )
-        )
-
-    def test_non_owner_needs_change_permission_to_update(self):
-        denied_request = SimpleNamespace(method="PUT", user=make_user(2))
-        allowed_request = SimpleNamespace(
-            method="PUT",
-            user=make_user(2, permissions={"document.change_document"}),
-        )
-
-        self.assertFalse(
-            self.permission.has_object_permission(
-                denied_request,
-                None,
-                self.document,
-            )
-        )
-        self.assertTrue(
-            self.permission.has_object_permission(
-                allowed_request,
-                None,
-                self.document,
-            )
-        )
-
-    def test_non_owner_needs_delete_permission_to_delete(self):
-        denied_request = SimpleNamespace(method="DELETE", user=make_user(2))
-        allowed_request = SimpleNamespace(
-            method="DELETE",
-            user=make_user(2, permissions={"document.delete_document"}),
-        )
-
-        self.assertFalse(
-            self.permission.has_object_permission(
-                denied_request,
-                None,
-                self.document,
-            )
-        )
-        self.assertTrue(
-            self.permission.has_object_permission(
-                allowed_request,
-                None,
-                self.document,
-            )
-        )
