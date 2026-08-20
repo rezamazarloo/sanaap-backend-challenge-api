@@ -38,13 +38,13 @@ class AccountManagementAPITests(APITestCase):
     def test_user_list_create_and_detail_require_django_permissions(self):
         self.client.force_authenticate(self.admin)
 
-        list_response = self.client.get(reverse("account:user-list"))
+        list_response = self.client.get(reverse("account:user-list-create"))
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(list_response.data), 3)
         self.assertEqual(set(list_response.data[0].keys()), {"id", "username"})
 
         create_response = self.client.post(
-            reverse("account:user-list"),
+            reverse("account:user-list-create"),
             {
                 "username": "new-user",
                 "password": "StrongPass123!",
@@ -64,7 +64,7 @@ class AccountManagementAPITests(APITestCase):
         self.assertIn("groups", detail_response.data)
 
         self.client.force_authenticate(self.regular_user)
-        forbidden_response = self.client.get(reverse("account:user-list"))
+        forbidden_response = self.client.get(reverse("account:user-list-create"))
         self.assertEqual(forbidden_response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_group_list_and_user_group_assignment(self):
@@ -76,7 +76,7 @@ class AccountManagementAPITests(APITestCase):
 
         assign_response = self.client.post(
             reverse(
-                "account:user-assign-group",
+                "account:user-group-assign",
                 kwargs={"user_id": self.target_user.pk},
             ),
             {"group_id": self.editor_group.pk},
