@@ -1,11 +1,9 @@
 from django.urls import path
 from document.views import (
-    AllDocumentListView,
-    DocumentDetailView,
+    DocumentDetailUpdateDeleteView,
     DocumentListCreateView,
-    DocumentTypeDetailView,
+    DocumentTypeDetailUpdateDeleteView,
     DocumentTypeListCreateView,
-    UserDocumentCreateView,
 )
 
 app_name = "document"
@@ -16,19 +14,13 @@ urlpatterns = [
     ),
     path(
         "types/<int:document_type_id>/",
-        DocumentTypeDetailView.as_view(),
-        name="document-type-detail",
-    ),
-    path("all/", AllDocumentListView.as_view(), name="document-all-list"),
-    path(
-        "users/<int:user_id>/",
-        UserDocumentCreateView.as_view(),
-        name="user-document-create",
+        DocumentTypeDetailUpdateDeleteView.as_view(),
+        name="document-type-detail-update-delete",
     ),
     path("", DocumentListCreateView.as_view(), name="document-list-create"),
     path(
         "<int:document_id>/",
-        DocumentDetailView.as_view(),
-        name="document-detail",
+        DocumentDetailUpdateDeleteView.as_view(),
+        name="document-detail-update-delete",
     ),
 ]
