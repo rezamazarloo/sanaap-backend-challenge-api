@@ -4,18 +4,18 @@ from document.mixins import DocumentListFilterMixin, DocumentUploadMixin
 from document.models import Document, DocumentType
 from document.pagination import DocumentPagination
 from document.permissions import DocumentTypePermission
+from document.schema import (
+    DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA,
+    DOCUMENT_LIST_CREATE_SCHEMA,
+    DOCUMENT_TYPE_DETAIL_UPDATE_DELETE_SCHEMA,
+    DOCUMENT_TYPE_LIST_CREATE_SCHEMA,
+)
 from document.serializers import (
     DocumentDownloadSerializer,
     DocumentListSerializer,
     DocumentReplaceSerializer,
     DocumentTypeSerializer,
     DocumentUploadSerializer,
-)
-from document.schema import (
-    DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA,
-    DOCUMENT_LIST_CREATE_SCHEMA,
-    DOCUMENT_TYPE_DETAIL_UPDATE_DELETE_SCHEMA,
-    DOCUMENT_TYPE_LIST_CREATE_SCHEMA,
 )
 from document.services import DocumentService
 from document.storage import ObjectStorageError
