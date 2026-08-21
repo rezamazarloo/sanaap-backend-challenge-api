@@ -1,7 +1,7 @@
 import json
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-from notification.constants import NOTIFICATIONS_GROUP
+from django.conf import settings
 
 
 class NotificationConsumer(AsyncWebsocketConsumer):
@@ -12,7 +12,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             return
 
         await self.channel_layer.group_add(
-            NOTIFICATIONS_GROUP,
+            settings.NOTIFICATIONS_CHANNEL_GROUP_NAME,
             self.channel_name,
         )
         await self.accept()
@@ -23,7 +23,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             return
 
         await self.channel_layer.group_discard(
-            NOTIFICATIONS_GROUP,
+            settings.NOTIFICATIONS_CHANNEL_GROUP_NAME,
             self.channel_name,
         )
 

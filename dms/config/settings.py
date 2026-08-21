@@ -109,6 +109,8 @@ CHANNEL_LAYERS = {
     },
 }
 
+NOTIFICATIONS_CHANNEL_GROUP_NAME = "notifications"
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
