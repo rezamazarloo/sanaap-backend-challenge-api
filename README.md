@@ -4,34 +4,41 @@ Document Management System (DMS) with Django REST Framework
 
 ## Management Commands
 
+Run Django commands from the `dms/` directory so relative local storage paths
+resolve to `dms/local_uploads`:
+
+```powershell
+cd dms
+```
+
 Run migrations first so Django auth permissions exist:
 
 ```powershell
-uv run python dms/manage.py migrate
+uv run python manage.py migrate
 ```
 
 Create a superuser:
 
 ```powershell
-uv run python dms/manage.py createsuperuser
+uv run python manage.py createsuperuser
 ```
 
 Create the default RBAC groups and permissions:
 
 ```powershell
-uv run python dms/manage.py bootstrap_roles
+uv run python manage.py bootstrap_roles
 ```
 
 Create the default `admin` / `admin` superuser:
 
 ```powershell
-uv run python dms/manage.py create_default_superuser
+uv run python manage.py create_default_superuser
 ```
 
 Seed the initial document types:
 
 ```powershell
-uv run python dms/manage.py seed_document_types
+uv run python manage.py seed_document_types
 ```
 
 ## Docker
@@ -47,6 +54,14 @@ docker compose up -d --build
 - RabbitMQ Management is available on `http://localhost:15672/`.
 - MinIO S3 API is available on `http://localhost:9000/`.
 - MinIO console is available on `http://localhost:9001/`.
+
+Run the local Django and Celery processes from the `dms/` directory:
+
+```powershell
+uv run python manage.py runserver
+uv run celery -A config.celery worker --loglevel=info --pool=solo
+uv run celery -A config.celery beat --loglevel=info
+```
 
 Production uses nginx as the public reverse proxy and Gunicorn for Django:
 
@@ -89,7 +104,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 - `GET /api/v1/backoffice/documents/` lists all documents and supports filtering by document/user fields; requires `document.view_document`.
 - `POST /api/v1/backoffice/documents/` validates and stages a document for the `user_id` supplied in the request body; requires `document.add_document`, or `document.add_image_document` for image-only document types.
-- `GET /api/v1/backoffice/documents/<document_id>/` returns full document details; ready documents include a presigned download URL; requires `document.view_document`.
+- `GET /api/v1/backoffice/documents/<document_id>/` returns the document download state; ready documents include a presigned download URL; requires `document.view_document`.
 - `PUT /api/v1/backoffice/documents/<document_id>/` validates and stages a replacement for any user's ready document; requires `document.change_document`, or `document.change_image_document` when both the current and target document types are image-only.
 - `DELETE /api/v1/backoffice/documents/<document_id>/` deletes any user's document; requires `document.delete_document`.
 

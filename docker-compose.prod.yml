@@ -35,7 +35,7 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
-      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
+      DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
@@ -79,7 +79,7 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
-      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
+      DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
@@ -99,7 +99,7 @@ services:
         condition: service_healthy
     volumes:
       - document_prod_local_storage:/app/dms/local_uploads
-    command: celery --workdir /app/dms -A config.celery worker --loglevel=info
+    command: celery -A config.celery worker --loglevel=info
     networks:
       - backend
 
@@ -122,7 +122,7 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
-      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
+      DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
@@ -140,7 +140,7 @@ services:
         condition: service_healthy
     volumes:
       - document_prod_local_storage:/app/dms/local_uploads
-    command: celery --workdir /app/dms -A config.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    command: celery -A config.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     networks:
       - backend
 

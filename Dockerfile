@@ -26,9 +26,11 @@ COPY --from=builder --chown=django:django /app /app
 
 RUN chmod +x /app/docker/entrypoint.sh
 
+WORKDIR /app/dms
+
 USER django
 
 EXPOSE 8000
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--chdir", "/app/dms", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]
