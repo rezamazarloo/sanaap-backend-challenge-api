@@ -3,6 +3,7 @@ from document.serializers import (
     DocumentListSerializer,
     DocumentReplaceSerializer,
     DocumentTypeSerializer,
+    DocumentUploadAcceptedSerializer,
     DocumentUploadSerializer,
 )
 from drf_spectacular.utils import (
@@ -55,17 +56,16 @@ DOCUMENT_LIST_CREATE_SCHEMA = extend_schema_view(
     ),
     post=extend_schema(
         summary="Upload document",
-        description="Upload a document for the authenticated user.",
+        description=(
+            "Validate and stage a document for asynchronous upload to object storage."
+        ),
         request=DOCUMENT_UPLOAD_REQUEST,
         responses={
-            status.HTTP_201_CREATED: DocumentListSerializer,
+            status.HTTP_202_ACCEPTED: DocumentUploadAcceptedSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid upload data."
             ),
             status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
-            status.HTTP_503_SERVICE_UNAVAILABLE: OpenApiResponse(
-                description="Object storage is unavailable."
-            ),
         },
         tags=[DOCUMENTS_TAG],
     ),
@@ -75,7 +75,8 @@ DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
     get=extend_schema(
         summary="Generate document download URL",
         description=(
-            "Return document metadata with a short-lived MinIO presigned URL."
+            "Return the document download state. Ready documents include a "
+            "short-lived MinIO presigned URL."
         ),
         responses={
             status.HTTP_200_OK: DocumentDownloadSerializer,
@@ -90,12 +91,10 @@ DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
     ),
     put=extend_schema(
         summary="Replace document file",
-        description=(
-            "Upload a replacement file for a document owned by the authenticated user."
-        ),
+        description=("Validate and stage a replacement file for asynchronous upload."),
         request=DOCUMENT_REPLACE_REQUEST,
         responses={
-            status.HTTP_200_OK: DocumentListSerializer,
+            status.HTTP_202_ACCEPTED: DocumentUploadAcceptedSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid document data."
             ),

@@ -126,7 +126,6 @@ class UserDocumentTypeSerializer(serializers.ModelSerializer):
             "name",
             "code",
             "allowed_extensions",
-            "max_size_bytes",
         )
         read_only_fields = fields
 
@@ -139,11 +138,22 @@ class DocumentListSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "document_type",
+            "status",
             "original_filename",
             "content_type",
             "size",
             "created_at",
-            "updated_at",
+        )
+        read_only_fields = fields
+
+
+class DocumentUploadAcceptedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields = (
+            "id",
+            "status",
+            "original_filename",
         )
         read_only_fields = fields
 
@@ -191,18 +201,22 @@ class DocumentReplaceSerializer(serializers.Serializer):
         return attrs
 
 
-class DocumentDownloadSerializer(DocumentListSerializer):
+class DocumentDownloadSerializer(serializers.ModelSerializer):
     download_url = serializers.SerializerMethodField()
     expires_in = serializers.SerializerMethodField()
 
-    class Meta(DocumentListSerializer.Meta):
-        fields = DocumentListSerializer.Meta.fields + (
+    class Meta:
+        model = Document
+        fields = (
+            "status",
+            "original_filename",
             "download_url",
             "expires_in",
         )
+        read_only_fields = fields
 
-    def get_download_url(self, obj) -> str:
-        return self.context["download_url"]
+    def get_download_url(self, obj) -> str | None:
+        return self.context.get("download_url")
 
-    def get_expires_in(self, obj) -> int:
-        return self.context["expires_in"]
+    def get_expires_in(self, obj) -> int | None:
+        return self.context.get("expires_in")

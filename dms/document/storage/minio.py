@@ -1,51 +1,11 @@
-from abc import ABC, abstractmethod
 from datetime import timedelta
-from functools import lru_cache
 from threading import Lock
-from typing import BinaryIO
 from urllib.parse import quote
 
 from django.conf import settings
+from document.storage.base import ObjectStorage, ObjectStorageError
 from minio import Minio
 from minio.error import InvalidResponseError, MinioException, S3Error, ServerError
-
-
-class ObjectStorageError(Exception):
-    pass
-
-
-class ObjectStorage(ABC):
-    @property
-    @abstractmethod
-    def default_expiration(self) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
-    def upload(
-        self,
-        *,
-        object_key: str,
-        file_obj: BinaryIO,
-        size: int,
-        content_type: str,
-        metadata: dict[str, str] | None = None,
-    ) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def delete(self, object_key: str) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def generate_download_url(
-        self,
-        *,
-        object_key: str,
-        expires_in: int | None = None,
-        filename: str | None = None,
-        content_type: str | None = None,
-    ) -> str:
-        raise NotImplementedError
 
 
 class MinioClientFactory:
@@ -118,7 +78,7 @@ class MinioStorage(ObjectStorage):
         self,
         *,
         object_key: str,
-        file_obj: BinaryIO,
+        file_obj,
         size: int,
         content_type: str,
         metadata: dict[str, str] | None = None,
@@ -142,6 +102,18 @@ class MinioStorage(ObjectStorage):
             self.client.remove_object(self.bucket, object_key)
         except (InvalidResponseError, MinioException, S3Error, ServerError) as exc:
             raise ObjectStorageError("Could not delete object from storage.") from exc
+
+    def object_exists(self, object_key: str) -> bool:
+        try:
+            self.client.stat_object(self.bucket, object_key)
+        except S3Error as exc:
+            if exc.code in {"NoSuchKey", "NoSuchObject", "NoSuchBucket"}:
+                return False
+            raise ObjectStorageError("Could not verify object in storage.") from exc
+        except (InvalidResponseError, MinioException, ServerError) as exc:
+            raise ObjectStorageError("Could not verify object in storage.") from exc
+
+        return True
 
     def generate_download_url(
         self,
@@ -192,11 +164,6 @@ class MinioStorage(ObjectStorage):
         except S3Error as exc:
             if exc.code not in {"NoSuchBucketPolicy", "NoSuchPolicy"}:
                 raise
-
-
-@lru_cache(maxsize=1)
-def get_object_storage() -> ObjectStorage:
-    return MinioStorage()
 
 
 def build_attachment_content_disposition(filename: str) -> str:

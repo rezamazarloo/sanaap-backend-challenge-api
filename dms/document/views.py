@@ -1,7 +1,7 @@
 from django.db.models.deletion import ProtectedError
 from document.exceptions import StorageUnavailable
 from document.mixins import DocumentListFilterMixin, DocumentUploadMixin
-from document.models import Document, DocumentType
+from document.models import Document, DocumentStatus, DocumentType
 from document.pagination import DocumentPagination
 from document.permissions import DocumentTypePermission
 from document.schema import (
@@ -15,6 +15,7 @@ from document.serializers import (
     DocumentListSerializer,
     DocumentReplaceSerializer,
     DocumentTypeSerializer,
+    DocumentUploadAcceptedSerializer,
     DocumentUploadSerializer,
 )
 from document.services import DocumentService
@@ -56,6 +57,7 @@ class DocumentListCreateView(
 
 @DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA
 class DocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "document_id"
     http_method_names = ["get", "put", "delete", "head", "options"]
@@ -76,18 +78,20 @@ class DocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
     def retrieve(self, request, *args, **kwargs):
         document = self.get_object()
         service = DocumentService()
+        context = {}
 
-        try:
-            download_url = service.generate_download_url(document)
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        if document.status == DocumentStatus.READY:
+            try:
+                context = {
+                    "download_url": service.generate_download_url(document),
+                    "expires_in": service.download_expiration,
+                }
+            except ObjectStorageError as exc:
+                raise StorageUnavailable() from exc
 
         serializer = self.get_serializer(
             document,
-            context={
-                "download_url": download_url,
-                "expires_in": service.download_expiration,
-            },
+            context=context,
         )
         return Response(serializer.data)
 
@@ -96,18 +100,18 @@ class DocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
         serializer = self.get_serializer(document, data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            document = DocumentService().replace_document(
-                document=document,
-                document_type=serializer.validated_data["document_type"],
-                uploaded_file=serializer.validated_data["file"],
-                uploaded_by=request.user,
-                validated_upload=serializer.validated_data["validated_upload"],
-            )
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        document = DocumentService().replace_document(
+            document=document,
+            document_type=serializer.validated_data["document_type"],
+            uploaded_file=serializer.validated_data["file"],
+            uploaded_by=request.user,
+            validated_upload=serializer.validated_data["validated_upload"],
+        )
 
-        return Response(DocumentListSerializer(document).data)
+        return Response(
+            DocumentUploadAcceptedSerializer(document).data,
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     def destroy(self, request, *args, **kwargs):
         document = self.get_object()

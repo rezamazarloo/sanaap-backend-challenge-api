@@ -45,6 +45,7 @@ class BackofficeDocumentListSerializer(serializers.ModelSerializer):
             "document_type",
             "user",
             "user_id",
+            "status",
             "original_filename",
             "content_type",
             "size",
@@ -57,18 +58,22 @@ class BackofficeDocumentListSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class BackofficeDocumentDetailSerializer(BackofficeDocumentListSerializer):
+class BackofficeDocumentDetailSerializer(serializers.ModelSerializer):
     download_url = serializers.SerializerMethodField()
     expires_in = serializers.SerializerMethodField()
 
-    class Meta(BackofficeDocumentListSerializer.Meta):
-        fields = BackofficeDocumentListSerializer.Meta.fields + (
+    class Meta:
+        model = Document
+        fields = (
+            "status",
+            "original_filename",
             "download_url",
             "expires_in",
         )
+        read_only_fields = fields
 
-    def get_download_url(self, obj) -> str:
-        return self.context["download_url"]
+    def get_download_url(self, obj) -> str | None:
+        return self.context.get("download_url")
 
-    def get_expires_in(self, obj) -> int:
-        return self.context["expires_in"]
+    def get_expires_in(self, obj) -> int | None:
+        return self.context.get("expires_in")

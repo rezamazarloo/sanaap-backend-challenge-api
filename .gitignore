@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 db.sqlite3
 *schedule*
+dms/local_uploads/

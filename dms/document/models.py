@@ -18,6 +18,12 @@ class DocumentType(models.Model):
         return self.name
 
 
+class DocumentStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    READY = "ready", "Ready"
+    FAILED = "failed", "Failed"
+
+
 class Document(models.Model):
     document_type = models.ForeignKey(
         DocumentType,
@@ -31,9 +37,16 @@ class Document(models.Model):
     )
     original_filename = models.CharField(max_length=255)
     object_key = models.CharField(max_length=500, unique=True)
+    local_file_path = models.CharField(max_length=500, blank=True)
     content_type = models.CharField(max_length=100)
     size = models.PositiveBigIntegerField()
     checksum = models.CharField(max_length=64)
+    status = models.CharField(
+        max_length=20,
+        choices=DocumentStatus.choices,
+        default=DocumentStatus.PENDING,
+        db_index=True,
+    )
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

@@ -3,7 +3,10 @@ from backoffice.document.serializers import (
     BackofficeDocumentListSerializer,
     BackofficeDocumentUploadSerializer,
 )
-from document.serializers import DocumentReplaceSerializer
+from document.serializers import (
+    DocumentReplaceSerializer,
+    DocumentUploadAcceptedSerializer,
+)
 from drf_spectacular.utils import (
     OpenApiRequest,
     OpenApiResponse,
@@ -58,21 +61,19 @@ BACKOFFICE_DOCUMENT_LIST_CREATE_SCHEMA = extend_schema_view(
     post=extend_schema(
         summary="Create backoffice document",
         description=(
-            "Upload a document for the user provided by `user_id`. Requires "
-            "`document.add_document`, or `document.add_image_document` when "
-            "the target document type is image-only."
+            "Validate and stage a document for the user provided by `user_id`. "
+            "The object storage upload runs asynchronously. Requires "
+            "`document.add_document`, or `document.add_image_document` when the "
+            "target document type is image-only."
         ),
         request=BACKOFFICE_DOCUMENT_UPLOAD_REQUEST,
         responses={
-            status.HTTP_201_CREATED: BackofficeDocumentListSerializer,
+            status.HTTP_202_ACCEPTED: DocumentUploadAcceptedSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid upload data."
             ),
             status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
             status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
-            status.HTTP_503_SERVICE_UNAVAILABLE: OpenApiResponse(
-                description="Object storage is unavailable."
-            ),
         },
         tags=[BACKOFFICE_DOCUMENTS_TAG],
     ),
@@ -82,8 +83,8 @@ BACKOFFICE_DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
     get=extend_schema(
         summary="Get backoffice document",
         description=(
-            "Return full document details with a short-lived MinIO presigned URL. "
-            "Requires `document.view_document`."
+            "Return the document download state. Ready documents include a "
+            "short-lived MinIO presigned URL. Requires `document.view_document`."
         ),
         responses={
             status.HTTP_200_OK: BackofficeDocumentDetailSerializer,
@@ -99,22 +100,20 @@ BACKOFFICE_DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
     put=extend_schema(
         summary="Replace backoffice document file",
         description=(
-            "Replace any user's document. Requires `document.change_document`, "
+            "Validate and stage a replacement for any user's document. The object "
+            "storage upload runs asynchronously. Requires `document.change_document`, "
             "or `document.change_image_document` when both the existing and target "
             "document types are image-only."
         ),
         request=BACKOFFICE_DOCUMENT_REPLACE_REQUEST,
         responses={
-            status.HTTP_200_OK: BackofficeDocumentListSerializer,
+            status.HTTP_202_ACCEPTED: DocumentUploadAcceptedSerializer,
             status.HTTP_400_BAD_REQUEST: OpenApiResponse(
                 description="Invalid document data."
             ),
             status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
             status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
             status.HTTP_404_NOT_FOUND: NOT_FOUND_RESPONSE,
-            status.HTTP_503_SERVICE_UNAVAILABLE: OpenApiResponse(
-                description="Object storage is unavailable."
-            ),
         },
         tags=[BACKOFFICE_DOCUMENTS_TAG],
     ),

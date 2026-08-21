@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -78,6 +79,23 @@ MINIO = {
     "presigned_url_expiration": int(os.getenv("MINIO_PRESIGNED_URL_EXPIRATION", "300")),
 }
 
+DOCUMENT_LOCAL_STORAGE = Path(
+    os.getenv("DOCUMENT_LOCAL_STORAGE", BASE_DIR / "local_uploads")
+)
+
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
+RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", "5672")
+CELERY_BROKER_URL = (
+    f"amqp://{quote(RABBITMQ_USER, safe='')}:{quote(RABBITMQ_PASSWORD, safe='')}"
+    f"@{RABBITMQ_HOST}:{RABBITMQ_PORT}//"
+)
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_TASK_TRACK_STARTED = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -135,7 +153,7 @@ LOGGING = {
 }
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Tehran"
+TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "Asia/Tehran")
 USE_I18N = True
 USE_TZ = True
 

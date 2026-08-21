@@ -10,9 +10,12 @@ from backoffice.document.serializers import (
 )
 from document.exceptions import StorageUnavailable
 from document.mixins import DocumentListFilterMixin
-from document.models import Document
+from document.models import Document, DocumentStatus
 from document.pagination import DocumentPagination
-from document.serializers import DocumentReplaceSerializer
+from document.serializers import (
+    DocumentReplaceSerializer,
+    DocumentUploadAcceptedSerializer,
+)
 from document.services import DocumentService
 from document.storage import ObjectStorageError
 from rest_framework import status
@@ -52,20 +55,17 @@ class BackofficeDocumentListCreateView(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            document = DocumentService().upload_document(
-                document_type=serializer.validated_data["document_type"],
-                uploaded_file=serializer.validated_data["file"],
-                user=serializer.validated_data["user"],
-                uploaded_by=request.user,
-                validated_upload=serializer.validated_data["validated_upload"],
-            )
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        document = DocumentService().upload_document(
+            document_type=serializer.validated_data["document_type"],
+            uploaded_file=serializer.validated_data["file"],
+            user=serializer.validated_data["user"],
+            uploaded_by=request.user,
+            validated_upload=serializer.validated_data["validated_upload"],
+        )
 
         return Response(
-            BackofficeDocumentListSerializer(document).data,
-            status=status.HTTP_201_CREATED,
+            DocumentUploadAcceptedSerializer(document).data,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -87,18 +87,20 @@ class BackofficeDocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
     def retrieve(self, request, *args, **kwargs):
         document = self.get_object()
         service = DocumentService()
+        context = {}
 
-        try:
-            download_url = service.generate_download_url(document)
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        if document.status == DocumentStatus.READY:
+            try:
+                context = {
+                    "download_url": service.generate_download_url(document),
+                    "expires_in": service.download_expiration,
+                }
+            except ObjectStorageError as exc:
+                raise StorageUnavailable() from exc
 
         serializer = self.get_serializer(
             document,
-            context={
-                "download_url": download_url,
-                "expires_in": service.download_expiration,
-            },
+            context=context,
         )
         return Response(serializer.data)
 
@@ -107,18 +109,18 @@ class BackofficeDocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
         serializer = self.get_serializer(document, data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            document = DocumentService().replace_document(
-                document=document,
-                document_type=serializer.validated_data["document_type"],
-                uploaded_file=serializer.validated_data["file"],
-                uploaded_by=request.user,
-                validated_upload=serializer.validated_data["validated_upload"],
-            )
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        document = DocumentService().replace_document(
+            document=document,
+            document_type=serializer.validated_data["document_type"],
+            uploaded_file=serializer.validated_data["file"],
+            uploaded_by=request.user,
+            validated_upload=serializer.validated_data["validated_upload"],
+        )
 
-        return Response(BackofficeDocumentListSerializer(document).data)
+        return Response(
+            DocumentUploadAcceptedSerializer(document).data,
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     def destroy(self, request, *args, **kwargs):
         document = self.get_object()

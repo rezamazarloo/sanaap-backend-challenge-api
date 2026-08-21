@@ -31,6 +31,11 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
+      RABBITMQ_PORT: "5672"
+      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
@@ -44,10 +49,98 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
       minio:
         condition: service_healthy
     expose:
       - "8000"
+    volumes:
+      - document_prod_local_storage:/app/dms/local_uploads
+    networks:
+      - backend
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-False}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}"
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB is required}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER is required}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
+      RABBITMQ_PORT: "5672"
+      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
+      MINIO_SECURE: "False"
+      MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      MINIO_PRESIGNED_URL_EXPIRATION: "${MINIO_PRESIGNED_URL_EXPIRATION:-300}"
+      DOCUMENT_LOG_LEVEL: "${DOCUMENT_LOG_LEVEL:-INFO}"
+    depends_on:
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - document_prod_local_storage:/app/dms/local_uploads
+    command: celery --workdir /app/dms -A config.celery worker --loglevel=info
+    networks:
+      - backend
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-False}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}"
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB is required}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER is required}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
+      RABBITMQ_PORT: "5672"
+      DOCUMENT_LOCAL_STORAGE: /app/dms/local_uploads
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
+      MINIO_SECURE: "False"
+      MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      MINIO_PRESIGNED_URL_EXPIRATION: "${MINIO_PRESIGNED_URL_EXPIRATION:-300}"
+      DOCUMENT_LOG_LEVEL: "${DOCUMENT_LOG_LEVEL:-INFO}"
+    depends_on:
+      app:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - document_prod_local_storage:/app/dms/local_uploads
+    command: celery --workdir /app/dms -A config.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     networks:
       - backend
 
@@ -62,6 +155,24 @@ services:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:4.3.4
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
+    volumes:
+      - rabbitmq_prod_data:/var/lib/rabbitmq
+    expose:
+      - "5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,5 +204,7 @@ networks:
     driver: bridge
 
 volumes:
+  document_prod_local_storage:
   postgres_prod_data:
+  rabbitmq_prod_data:
   minio_prod_data:

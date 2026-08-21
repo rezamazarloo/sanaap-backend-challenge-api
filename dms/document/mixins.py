@@ -1,12 +1,12 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from document.serializers import (
+    DocumentUploadAcceptedSerializer,
+    DocumentUploadSerializer,
+)
+from document.services import DocumentService
 from rest_framework import status
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
-
-from document.exceptions import StorageUnavailable
-from document.serializers import DocumentListSerializer, DocumentUploadSerializer
-from document.services import DocumentService
-from document.storage import ObjectStorageError
 
 
 class DocumentListFilterMixin:
@@ -15,10 +15,17 @@ class DocumentListFilterMixin:
         "document_type": ["exact"],
         "document_type__code": ["exact", "iexact"],
         "content_type": ["exact", "iexact"],
+        "status": ["exact"],
         "created_at": ["gte", "lte"],
     }
     search_fields = ["original_filename"]
-    ordering_fields = ["created_at", "updated_at", "size", "original_filename"]
+    ordering_fields = [
+        "created_at",
+        "updated_at",
+        "size",
+        "original_filename",
+        "status",
+    ]
     ordering = ["-created_at"]
 
 
@@ -28,23 +35,20 @@ class DocumentUploadMixin:
         request,
         *,
         user,
-        response_serializer_class=DocumentListSerializer,
+        response_serializer_class=DocumentUploadAcceptedSerializer,
     ):
         serializer = DocumentUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            document = DocumentService().upload_document(
-                document_type=serializer.validated_data["document_type"],
-                uploaded_file=serializer.validated_data["file"],
-                user=user,
-                uploaded_by=request.user,
-                validated_upload=serializer.validated_data["validated_upload"],
-            )
-        except ObjectStorageError as exc:
-            raise StorageUnavailable() from exc
+        document = DocumentService().upload_document(
+            document_type=serializer.validated_data["document_type"],
+            uploaded_file=serializer.validated_data["file"],
+            user=user,
+            uploaded_by=request.user,
+            validated_upload=serializer.validated_data["validated_upload"],
+        )
 
         return Response(
             response_serializer_class(document).data,
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )
