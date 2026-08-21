@@ -2,6 +2,19 @@ from django.conf import settings
 from django.db import models
 
 
+class DocumentStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    READY = "ready", "Ready"
+    FAILED = "failed", "Failed"
+
+
+class Action(models.TextChoices):
+    CREATED = "created", "Created"
+    DOWNLOAD_LINK_GENERATED = "download_link_generated", "Download link generated"
+    REPLACED = "replaced", "Replaced"
+    DELETED = "deleted", "Deleted"
+
+
 class DocumentType(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50, unique=True)
@@ -16,12 +29,6 @@ class DocumentType(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class DocumentStatus(models.TextChoices):
-    PENDING = "pending", "Pending"
-    READY = "ready", "Ready"
-    FAILED = "failed", "Failed"
 
 
 class Document(models.Model):
@@ -64,3 +71,31 @@ class Document(models.Model):
 
     def __str__(self):
         return self.original_filename
+
+
+class DocumentAuditLog(models.Model):
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.SET_NULL,
+        related_name="document_audit_logs",
+        null=True,
+        blank=True,
+    )
+    action = models.CharField(
+        max_length=32,
+        choices=Action.choices,
+        db_index=True,
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="document_audit_logs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.action} document audit log"

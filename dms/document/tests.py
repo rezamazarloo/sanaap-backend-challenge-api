@@ -116,6 +116,7 @@ class DocumentServiceTests(SimpleTestCase):
                     "document.services.document.transaction.on_commit",
                     side_effect=callbacks.append,
                 ),
+                patch("document.services.document.AuditLogService.record"),
             ):
                 result = DocumentService(
                     storage_service=storage_service

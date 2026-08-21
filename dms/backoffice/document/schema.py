@@ -1,4 +1,5 @@
 from backoffice.document.serializers import (
+    BackofficeDocumentAuditLogSerializer,
     BackofficeDocumentDetailSerializer,
     BackofficeDocumentListSerializer,
     BackofficeDocumentUploadSerializer,
@@ -16,6 +17,7 @@ from drf_spectacular.utils import (
 from rest_framework import status
 
 BACKOFFICE_DOCUMENTS_TAG = "Backoffice Documents"
+BACKOFFICE_DOCUMENT_AUDIT_LOGS_TAG = "Backoffice Document Audit Logs"
 
 UNAUTHORIZED_RESPONSE = OpenApiResponse(
     description="Authentication credentials were not provided or are invalid."
@@ -132,5 +134,22 @@ BACKOFFICE_DOCUMENT_DETAIL_UPDATE_DELETE_SCHEMA = extend_schema_view(
             ),
         },
         tags=[BACKOFFICE_DOCUMENTS_TAG],
+    ),
+)
+
+BACKOFFICE_DOCUMENT_AUDIT_LOG_LIST_SCHEMA = extend_schema_view(
+    get=extend_schema(
+        summary="List backoffice document audit logs",
+        description=(
+            "Return document audit logs. Supports filtering by `created_at`, "
+            "`actor`, `action`, and `document`. Requires "
+            "`document.view_documentauditlog`."
+        ),
+        responses={
+            status.HTTP_200_OK: BackofficeDocumentAuditLogSerializer(many=True),
+            status.HTTP_401_UNAUTHORIZED: UNAUTHORIZED_RESPONSE,
+            status.HTTP_403_FORBIDDEN: FORBIDDEN_RESPONSE,
+        },
+        tags=[BACKOFFICE_DOCUMENT_AUDIT_LOGS_TAG],
     ),
 )

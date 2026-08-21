@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
-from document.models import Document, DocumentStatus
+from document.models import Action, Document, DocumentStatus
+from document.services.audit import AuditLogService
 from document.services.storage import DocumentStorageService, LocalStagedFileMissing
 from document.validators import ValidatedUpload
 from rest_framework.exceptions import ValidationError
@@ -46,6 +47,15 @@ class DocumentService:
                     status=DocumentStatus.PENDING,
                     uploaded_by=uploaded_by,
                 )
+                AuditLogService.record(
+                    document=document,
+                    action=Action.CREATED,
+                    actor=uploaded_by,
+                    metadata={
+                        "filename": validated_upload.original_filename,
+                        "document_type_id": document_type.pk,
+                    },
+                )
                 transaction.on_commit(
                     lambda document_id=document.pk: self._enqueue_upload(document_id)
                 )
@@ -69,6 +79,8 @@ class DocumentService:
                 {"detail": "Only ready documents can be replaced."}
             )
 
+        old_filename = document.original_filename
+        old_checksum = document.checksum
         local_file_path = self.storage_service.stage_uploaded_file(
             uploaded_file=uploaded_file,
             object_key=document.object_key,
@@ -96,6 +108,17 @@ class DocumentService:
                         "uploaded_by",
                         "updated_at",
                     ]
+                )
+                AuditLogService.record(
+                    document=document,
+                    action=Action.REPLACED,
+                    actor=uploaded_by,
+                    metadata={
+                        "old_filename": old_filename,
+                        "new_filename": validated_upload.original_filename,
+                        "old_checksum": old_checksum,
+                        "new_checksum": validated_upload.checksum,
+                    },
                 )
                 transaction.on_commit(
                     lambda document_id=document.pk: self._enqueue_replacement(
@@ -147,16 +170,35 @@ class DocumentService:
     def complete_pending_replacement(self, document_id: int) -> Document | None:
         return self.complete_pending_upload(document_id)
 
-    def delete_document(self, document: Document) -> None:
+    def delete_document(self, document: Document, *, actor) -> None:
+        metadata = {
+            "filename": document.original_filename,
+            "object_key": document.object_key,
+        }
+
         if document.status == DocumentStatus.READY:
             self.storage_service.delete_object(document.object_key)
         else:
             self.storage_service.delete_local_file(document.local_file_path)
 
-        document.delete()
+        with transaction.atomic():
+            AuditLogService.record(
+                document=document,
+                action=Action.DELETED,
+                actor=actor,
+                metadata=metadata,
+            )
+            document.delete()
 
-    def generate_download_url(self, document: Document) -> str:
-        return self.storage_service.generate_download_url(document)
+    def generate_download_url(self, document: Document, *, actor) -> str:
+        download_url = self.storage_service.generate_download_url(document)
+        AuditLogService.record(
+            document=document,
+            action=Action.DOWNLOAD_LINK_GENERATED,
+            actor=actor,
+            metadata={"filename": document.original_filename},
+        )
+        return download_url
 
     def mark_document_upload_failed(self, document_id: int) -> None:
         Document.objects.filter(

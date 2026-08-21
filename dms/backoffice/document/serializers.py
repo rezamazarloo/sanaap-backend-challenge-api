@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
-from document.models import Document, DocumentType
+from document.models import Document, DocumentAuditLog, DocumentType
 from document.serializers import DocumentTypeSerializer
 from document.validators import UploadedFileValidator
 from rest_framework import serializers
@@ -77,3 +77,24 @@ class BackofficeDocumentDetailSerializer(serializers.ModelSerializer):
 
     def get_expires_in(self, obj) -> int | None:
         return self.context.get("expires_in")
+
+
+class BackofficeDocumentAuditLogSerializer(serializers.ModelSerializer):
+    document = serializers.StringRelatedField(read_only=True)
+    document_id = serializers.IntegerField(read_only=True)
+    actor = serializers.StringRelatedField(read_only=True)
+    actor_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = DocumentAuditLog
+        fields = (
+            "id",
+            "document",
+            "document_id",
+            "action",
+            "actor",
+            "actor_id",
+            "metadata",
+            "created_at",
+        )
+        read_only_fields = fields

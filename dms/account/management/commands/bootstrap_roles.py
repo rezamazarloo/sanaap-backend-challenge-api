@@ -13,6 +13,7 @@ ROLE_PERMISSION_SPECS = {
         ("document", "document", "change_document"),
         ("document", "document", "delete_document"),
         ("document", "document", "view_document"),
+        ("document", "documentauditlog", "view_documentauditlog"),
         ("document", "documenttype", "add_documenttype"),
         ("document", "documenttype", "change_documenttype"),
         ("document", "documenttype", "delete_documenttype"),

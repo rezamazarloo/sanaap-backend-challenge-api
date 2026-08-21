@@ -71,3 +71,13 @@ class BackofficeDocumentPermission(BasePermission):
             )
         except (DocumentType.DoesNotExist, TypeError, ValueError):
             return None
+
+
+class BackofficeDocumentAuditLogPermission(BasePermission):
+    message = "You do not have permission to view document audit logs."
+
+    def has_permission(self, request, view):
+        if request.method in {"GET", "HEAD", "OPTIONS"}:
+            return request.user.has_perm("document.view_documentauditlog")
+
+        return False

@@ -1,7 +1,10 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from backoffice.document.permissions import BackofficeDocumentPermission
+from backoffice.document.permissions import (
+    BackofficeDocumentAuditLogPermission,
+    BackofficeDocumentPermission,
+)
 from django.test import SimpleTestCase
 
 
@@ -148,3 +151,18 @@ class BackofficeDocumentPermissionTests(SimpleTestCase):
                 self.document,
             )
         )
+
+
+class BackofficeDocumentAuditLogPermissionTests(SimpleTestCase):
+    def setUp(self):
+        self.permission = BackofficeDocumentAuditLogPermission()
+
+    def test_view_permission_can_read_document_audit_logs(self):
+        denied_request = SimpleNamespace(method="GET", user=make_user(2))
+        allowed_request = SimpleNamespace(
+            method="GET",
+            user=make_user(2, permissions={"document.view_documentauditlog"}),
+        )
+
+        self.assertFalse(self.permission.has_permission(denied_request, None))
+        self.assertTrue(self.permission.has_permission(allowed_request, None))

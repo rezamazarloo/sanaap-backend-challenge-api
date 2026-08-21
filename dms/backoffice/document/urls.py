@@ -1,4 +1,5 @@
 from backoffice.document.views import (
+    BackofficeDocumentAuditLogListView,
     BackofficeDocumentDetailUpdateDeleteView,
     BackofficeDocumentListCreateView,
 )
@@ -11,6 +12,11 @@ urlpatterns = [
         "",
         BackofficeDocumentListCreateView.as_view(),
         name="document-list-create",
+    ),
+    path(
+        "audits/",
+        BackofficeDocumentAuditLogListView.as_view(),
+        name="document-audit-log-list",
     ),
     path(
         "<int:document_id>/",

@@ -83,7 +83,10 @@ class DocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
         if document.status == DocumentStatus.READY:
             try:
                 context = {
-                    "download_url": service.generate_download_url(document),
+                    "download_url": service.generate_download_url(
+                        document,
+                        actor=request.user,
+                    ),
                     "expires_in": service.download_expiration,
                 }
             except ObjectStorageError as exc:
@@ -117,7 +120,7 @@ class DocumentDetailUpdateDeleteView(RetrieveUpdateDestroyAPIView):
         document = self.get_object()
 
         try:
-            DocumentService().delete_document(document)
+            DocumentService().delete_document(document, actor=request.user)
         except ObjectStorageError as exc:
             raise StorageUnavailable() from exc
 
