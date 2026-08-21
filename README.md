@@ -59,11 +59,16 @@ Run the local Django and Celery processes from the `dms/` directory:
 
 ```powershell
 uv run python manage.py runserver
+uv run daphne -b 0.0.0.0 -p 8001 config.asgi:application
 uv run celery -A config.celery worker --loglevel=info --pool=solo
 uv run celery -A config.celery beat --loglevel=info
 ```
 
-Production uses nginx as the public reverse proxy and Gunicorn for Django:
+For local development, Daphne serves WebSockets on
+`ws://localhost:8001/ws/notifications/`.
+
+Production uses nginx as the public reverse proxy, Gunicorn for HTTP, and
+Daphne for WebSockets:
 
 ```powershell
 docker compose -f docker-compose.prod.yml up -d --build
@@ -71,10 +76,13 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 - `nginx` publishes the public ports and proxies to the private Docker upstreams.
 - `app` builds the Django image, waits for healthy Postgres and MinIO, runs `migrate`, `bootstrap_roles`, `create_default_superuser`, and `seed_document_types`, then serves Gunicorn internally on port `8000`.
+- `app_ws` runs Daphne internally on port `8001` for `/ws/notifications/`.
 - `celery_worker` uploads staged files from shared local storage to MinIO.
 - `celery_beat` runs reconciliation every 5 minutes for failed uploads that still have a local staged file.
 - `rabbitmq` is the Celery message broker without the management UI.
+- `redis` is the Django Channels layer used for WebSocket broadcasts.
 - Django is available through nginx on `http://localhost/`.
+- WebSocket notifications are available through nginx on `ws://localhost/ws/notifications/`.
 - MinIO S3 API is available through nginx on `http://localhost:9000/`.
 - MinIO console is available through nginx on `http://localhost:9001/`.
 - Docker Compose reads the existing `.env` file automatically.
@@ -99,6 +107,33 @@ docker compose -f docker-compose.prod.yml up -d --build
 - `GET /api/v1/documents/<document_id>/` returns metadata; ready documents include a presigned download URL.
 - `PUT /api/v1/documents/<document_id>/` validates and stages a replacement for the authenticated user's own ready document, then returns `202 Accepted`.
 - `DELETE /api/v1/documents/<document_id>/` deletes the authenticated user's own document.
+
+## WebSocket Notifications
+
+- `GET /ws/notifications/` accepts the same DRF token used by the HTTP API.
+- Browser clients can connect with `ws://localhost:8001/ws/notifications/?token=<token>` in development.
+- Production clients can connect through nginx with `ws://localhost/ws/notifications/?token=<token>`.
+- Non-browser clients may also send `Authorization: Token <token>`.
+- Document uploads, updates, ready/failed status changes, and deletions are broadcast to all authenticated WebSocket clients.
+
+Example document update event:
+
+```json
+{
+  "event": "document.updated",
+  "document_id": 123,
+  "status": "ready"
+}
+```
+
+Example document deletion event:
+
+```json
+{
+  "event": "document.deleted",
+  "document_id": 123
+}
+```
 
 ## Backoffice Document API
 
