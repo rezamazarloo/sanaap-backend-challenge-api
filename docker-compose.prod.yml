@@ -38,8 +38,8 @@ services:
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
-      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
-      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
       MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
       MINIO_SECURE: "False"
       MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
@@ -82,8 +82,8 @@ services:
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
-      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
-      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
       MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
       MINIO_SECURE: "False"
       MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
@@ -125,8 +125,8 @@ services:
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
-      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
-      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
       MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
       MINIO_SECURE: "False"
       MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
@@ -162,7 +162,7 @@ services:
       - backend
 
   rabbitmq:
-    image: rabbitmq:4.3.4
+    image: rabbitmq:4.2
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"

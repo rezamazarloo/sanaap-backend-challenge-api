@@ -63,12 +63,8 @@ DATABASES = {
 MINIO = {
     "endpoint": os.getenv("MINIO_ENDPOINT", "localhost:9000"),
     "public_endpoint": os.getenv("MINIO_PUBLIC_ENDPOINT"),
-    "access_key": os.getenv(
-        "MINIO_ACCESS_KEY", os.getenv("MINIO_ROOT_USER", "minioadmin")
-    ),
-    "secret_key": os.getenv(
-        "MINIO_SECRET_KEY", os.getenv("MINIO_ROOT_PASSWORD", "minioadmin")
-    ),
+    "access_key": os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
+    "secret_key": os.getenv("MINIO_SECRET_KEY", "minioadmin"),
     "bucket": os.getenv("MINIO_BUCKET", "documents"),
     "secure": os.getenv("MINIO_SECURE", "True").lower() == "true",
     "public_secure": os.getenv(
