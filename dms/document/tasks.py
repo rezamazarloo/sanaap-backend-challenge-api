@@ -18,51 +18,37 @@ class ObjectStorageRetryTask(Task):
     retry_jitter = True
     track_started = True
 
-
-class UploadDocumentTask(ObjectStorageRetryTask):
-    abstract = True
-
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         document_id = _document_id_from_task_args(args, kwargs)
         if isinstance(exc, ObjectStorageError) and document_id is not None:
             DocumentService().mark_document_upload_failed(document_id)
-        super().on_failure(exc, task_id, args, kwargs, einfo)
+            logger.error(
+                "Document %s upload failed after %s retries.",
+                document_id,
+                self.max_retries,
+            )
 
-
-class ReplaceDocumentTask(ObjectStorageRetryTask):
-    abstract = True
-
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        document_id = _document_id_from_task_args(args, kwargs)
-        if isinstance(exc, ObjectStorageError) and document_id is not None:
-            DocumentService().mark_document_upload_failed(document_id)
         super().on_failure(exc, task_id, args, kwargs, einfo)
 
 
 @shared_task(
     bind=True,
-    base=UploadDocumentTask,
+    base=ObjectStorageRetryTask,
     name="document.tasks.upload_document_task",
 )
 def upload_document_task(self, document_id: int):
     document = DocumentService().complete_pending_upload(document_id)
-    return {
-        "document_id": document_id,
-        "status": getattr(document, "status", None),
-    }
+    return _document_task_result(document_id, document)
 
 
 @shared_task(
     bind=True,
-    base=ReplaceDocumentTask,
+    base=ObjectStorageRetryTask,
     name="document.tasks.replace_document_task",
 )
 def replace_document_task(self, document_id: int):
     document = DocumentService().complete_pending_replacement(document_id)
-    return {
-        "document_id": document_id,
-        "status": getattr(document, "status", None),
-    }
+    return _document_task_result(document_id, document)
 
 
 @shared_task(
@@ -79,6 +65,13 @@ def reconcile_failed_document_uploads_task(self):
         result["documents"],
     )
     return result
+
+
+def _document_task_result(document_id: int, document) -> dict:
+    return {
+        "document_id": document_id,
+        "status": getattr(document, "status", None),
+    }
 
 
 def _document_id_from_task_args(args, kwargs):

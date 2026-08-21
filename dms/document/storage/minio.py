@@ -6,6 +6,23 @@ from django.conf import settings
 from document.storage.base import ObjectStorage, ObjectStorageError
 from minio import Minio
 from minio.error import InvalidResponseError, MinioException, S3Error, ServerError
+from urllib3 import PoolManager
+from urllib3.exceptions import HTTPError as Urllib3HTTPError
+from urllib3.util.retry import Retry
+
+MINIO_STORAGE_ERRORS = (
+    InvalidResponseError,
+    MinioException,
+    S3Error,
+    ServerError,
+    Urllib3HTTPError,
+)
+MINIO_TRANSPORT_ERRORS = (
+    InvalidResponseError,
+    MinioException,
+    ServerError,
+    Urllib3HTTPError,
+)
 
 
 class MinioClientFactory:
@@ -53,6 +70,7 @@ class MinioClientFactory:
             secret_key=minio_config["secret_key"],
             secure=secure,
             region=minio_config["region"],
+            http_client=PoolManager(retries=Retry(total=0)),
         )
 
 
@@ -94,13 +112,13 @@ class MinioStorage(ObjectStorage):
                 content_type=content_type,
                 metadata=metadata,
             )
-        except (InvalidResponseError, MinioException, S3Error, ServerError) as exc:
+        except MINIO_STORAGE_ERRORS as exc:
             raise ObjectStorageError("Could not upload object to storage.") from exc
 
     def delete(self, object_key: str) -> None:
         try:
             self.client.remove_object(self.bucket, object_key)
-        except (InvalidResponseError, MinioException, S3Error, ServerError) as exc:
+        except MINIO_STORAGE_ERRORS as exc:
             raise ObjectStorageError("Could not delete object from storage.") from exc
 
     def object_exists(self, object_key: str) -> bool:
@@ -110,7 +128,7 @@ class MinioStorage(ObjectStorage):
             if exc.code in {"NoSuchKey", "NoSuchObject", "NoSuchBucket"}:
                 return False
             raise ObjectStorageError("Could not verify object in storage.") from exc
-        except (InvalidResponseError, MinioException, ServerError) as exc:
+        except MINIO_TRANSPORT_ERRORS as exc:
             raise ObjectStorageError("Could not verify object in storage.") from exc
 
         return True
@@ -138,7 +156,7 @@ class MinioStorage(ObjectStorage):
                 expires=timedelta(seconds=expires_in or self.default_expiration),
                 response_headers=response_headers or None,
             )
-        except (InvalidResponseError, MinioException, S3Error, ServerError) as exc:
+        except MINIO_STORAGE_ERRORS as exc:
             raise ObjectStorageError("Could not generate download URL.") from exc
 
     def _ensure_private_bucket(self):
@@ -153,7 +171,7 @@ class MinioStorage(ObjectStorage):
                 if not self.client.bucket_exists(self.bucket):
                     self.client.make_bucket(self.bucket)
                 self._delete_bucket_policy_if_present()
-            except (InvalidResponseError, MinioException, S3Error, ServerError) as exc:
+            except MINIO_STORAGE_ERRORS as exc:
                 raise ObjectStorageError("Could not prepare storage bucket.") from exc
 
             self._bucket_ready = True
