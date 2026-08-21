@@ -18,6 +18,8 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     # Third-party apps
+    "daphne",
+    "channels",
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",
@@ -27,6 +29,7 @@ INSTALLED_APPS = [
     "backoffice.apps.BackofficeConfig",
     "backoffice.document.apps.BackofficeDocumentConfig",
     "document.apps.DocumentConfig",
+    "notification.apps.NotificationConfig",
 ]
 
 MIDDLEWARE = [
@@ -36,6 +39,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 
 TEMPLATES = [
@@ -92,6 +96,19 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_TASK_TRACK_STARTED = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+REDIS_CHANNEL_DB = os.getenv("REDIS_CHANNEL_DB", "0")
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_CHANNEL_DB}"],
+        },
+    },
+}
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -143,6 +160,11 @@ LOGGING = {
         "document": {
             "handlers": ["console"],
             "level": os.getenv("DOCUMENT_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "notification": {
+            "handlers": ["console"],
+            "level": os.getenv("NOTIFICATION_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
     },
