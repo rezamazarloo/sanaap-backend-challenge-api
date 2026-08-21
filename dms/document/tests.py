@@ -175,6 +175,7 @@ class DocumentServiceTests(SimpleTestCase):
             document = FakeDocument(local_file_path)
             queryset = MagicMock()
             queryset.update.return_value = 1
+            event_publisher = MagicMock()
 
             with (
                 patch(
@@ -187,7 +188,8 @@ class DocumentServiceTests(SimpleTestCase):
                 ),
             ):
                 DocumentService(
-                    storage_service=storage_service
+                    storage_service=storage_service,
+                    event_publisher=event_publisher,
                 ).complete_pending_upload(document.pk)
 
             self.assertFalse(storage_service.local_storage.exists(local_file_path))
@@ -200,3 +202,4 @@ class DocumentServiceTests(SimpleTestCase):
                 queryset.update.call_args.kwargs["status"],
                 DocumentStatus.READY,
             )
+            event_publisher.document_updated.assert_called_once_with(document)

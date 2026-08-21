@@ -4,12 +4,18 @@ from document.models import Action, Document, DocumentStatus
 from document.services.audit import AuditLogService
 from document.services.storage import DocumentStorageService, LocalStagedFileMissing
 from document.validators import ValidatedUpload
+from notification.publishers import DocumentEventPublisher
 from rest_framework.exceptions import ValidationError
 
 
 class DocumentService:
-    def __init__(self, storage_service: DocumentStorageService | None = None):
+    def __init__(
+        self,
+        storage_service: DocumentStorageService | None = None,
+        event_publisher: DocumentEventPublisher | None = None,
+    ):
         self.storage_service = storage_service or DocumentStorageService()
+        self.event_publisher = event_publisher or DocumentEventPublisher()
 
     @property
     def download_expiration(self):
@@ -57,7 +63,7 @@ class DocumentService:
                     },
                 )
                 transaction.on_commit(
-                    lambda document_id=document.pk: self._enqueue_upload(document_id)
+                    lambda document=document: self._after_upload_commit(document)
                 )
         except Exception:
             self.storage_service.delete_local_file(local_file_path)
@@ -75,9 +81,7 @@ class DocumentService:
         validated_upload: ValidatedUpload,
     ) -> Document:
         if document.status != DocumentStatus.READY:
-            raise ValidationError(
-                {"detail": "Only ready documents can be replaced."}
-            )
+            raise ValidationError({"detail": "Only ready documents can be replaced."})
 
         old_filename = document.original_filename
         old_checksum = document.checksum
@@ -121,9 +125,7 @@ class DocumentService:
                     },
                 )
                 transaction.on_commit(
-                    lambda document_id=document.pk: self._enqueue_replacement(
-                        document_id
-                    )
+                    lambda document=document: self._after_replacement_commit(document)
                 )
         except Exception:
             self.storage_service.delete_local_file(local_file_path)
@@ -151,7 +153,7 @@ class DocumentService:
             )
         except LocalStagedFileMissing:
             self.mark_document_upload_failed(document_id)
-            return document
+            return Document.objects.get(pk=document_id)
 
         updated = Document.objects.filter(
             pk=document_id,
@@ -162,10 +164,12 @@ class DocumentService:
             updated_at=timezone.now(),
         )
 
+        document = Document.objects.get(pk=document_id)
         if updated:
             self.storage_service.delete_local_file(local_file_path)
+            self.event_publisher.document_updated(document)
 
-        return Document.objects.get(pk=document_id)
+        return document
 
     def complete_pending_replacement(self, document_id: int) -> Document | None:
         return self.complete_pending_upload(document_id)
@@ -201,13 +205,16 @@ class DocumentService:
         return download_url
 
     def mark_document_upload_failed(self, document_id: int) -> None:
-        Document.objects.filter(
+        updated = Document.objects.filter(
             pk=document_id,
             status=DocumentStatus.PENDING,
         ).update(
             status=DocumentStatus.FAILED,
             updated_at=timezone.now(),
         )
+        if updated:
+            document = Document.objects.only("id", "status").get(pk=document_id)
+            self.event_publisher.document_updated(document)
 
     def enqueue_failed_upload_retries(self) -> dict[str, int]:
         from document.tasks import upload_document_task
@@ -242,3 +249,11 @@ class DocumentService:
         from document.tasks import replace_document_task
 
         replace_document_task.delay(document_id)
+
+    def _after_upload_commit(self, document: Document) -> None:
+        self._enqueue_upload(document.pk)
+        self.event_publisher.document_uploaded(document)
+
+    def _after_replacement_commit(self, document: Document) -> None:
+        self._enqueue_replacement(document.pk)
+        self.event_publisher.document_updated(document)
