@@ -35,7 +35,7 @@ WORKDIR /app/dms
 
 USER django
 
-EXPOSE 8000
+EXPOSE 8000 8001
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "60", "--access-logfile", "-", "--error-logfile", "-"]

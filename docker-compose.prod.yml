@@ -5,6 +5,8 @@ services:
     depends_on:
       app:
         condition: service_started
+      app_ws:
+        condition: service_started
       minio:
         condition: service_healthy
     ports:
@@ -37,6 +39,9 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_CHANNEL_DB: "${REDIS_CHANNEL_DB:-0}"
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
@@ -53,12 +58,60 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       minio:
         condition: service_healthy
     expose:
       - "8000"
     volumes:
       - document_prod_local_storage:/app/dms/${DOCUMENT_LOCAL_STORAGE:-local_uploads}
+    networks:
+      - backend
+
+  app_ws:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
+    image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-False}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:?DJANGO_ALLOWED_HOSTS is required}"
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB is required}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER is required}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+      RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
+      RABBITMQ_PORT: "5672"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_CHANNEL_DB: "${REDIS_CHANNEL_DB:-0}"
+      DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-documents}"
+      MINIO_SECURE: "False"
+      MINIO_PUBLIC_SECURE: "${MINIO_PUBLIC_SECURE:-False}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      MINIO_PRESIGNED_URL_EXPIRATION: "${MINIO_PRESIGNED_URL_EXPIRATION:-300}"
+      DOCUMENT_LOG_LEVEL: "${DOCUMENT_LOG_LEVEL:-INFO}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8001"
+    command: daphne -b 0.0.0.0 -p 8001 config.asgi:application
     networks:
       - backend
 
@@ -83,6 +136,9 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_CHANNEL_DB: "${REDIS_CHANNEL_DB:-0}"
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
@@ -98,6 +154,8 @@ services:
       app:
         condition: service_started
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       minio:
         condition: service_healthy
@@ -128,6 +186,9 @@ services:
       RABBITMQ_USER: "${RABBITMQ_USER:?RABBITMQ_USER is required}"
       RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
       RABBITMQ_PORT: "5672"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_CHANNEL_DB: "${REDIS_CHANNEL_DB:-0}"
       DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
       MINIO_ENDPOINT: minio:9000
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-localhost:9000}"
@@ -143,6 +204,8 @@ services:
       app:
         condition: service_started
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - document_prod_local_storage:/app/dms/${DOCUMENT_LOCAL_STORAGE:-local_uploads}
@@ -185,6 +248,22 @@ services:
     networks:
       - backend
 
+  redis:
+    image: redis:7.4
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     restart: unless-stopped
@@ -213,4 +292,5 @@ volumes:
   document_prod_local_storage:
   postgres_prod_data:
   rabbitmq_prod_data:
+  redis_prod_data:
   minio_prod_data:
