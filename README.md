@@ -59,13 +59,19 @@ Run the local Django and Celery processes from the `dms/` directory:
 
 ```powershell
 uv run python manage.py runserver
-uv run daphne -b 0.0.0.0 -p 8001 config.asgi:application
 uv run celery -A config.celery worker --loglevel=info --pool=solo
 uv run celery -A config.celery beat --loglevel=info
 ```
 
-For local development, Daphne serves WebSockets on
-`ws://localhost:8001/ws/notifications/`.
+In local development, `runserver` uses Daphne because Channels is installed, so
+HTTP and WebSockets are both served on port `8000`. WebSocket notifications are
+available at `ws://localhost:8000/ws/notifications/`.
+
+To mirror production with a separate WebSocket process, run Daphne separately:
+
+```powershell
+uv run daphne -b 0.0.0.0 -p 8001 config.asgi:application
+```
 
 Production uses nginx as the public reverse proxy, Gunicorn for HTTP, and
 Daphne for WebSockets:
@@ -111,7 +117,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 ## WebSocket Notifications
 
 - `GET /ws/notifications/` accepts the same DRF token used by the HTTP API.
-- Browser clients can connect with `ws://localhost:8001/ws/notifications/?token=<token>` in development.
+- Browser clients can connect with `ws://localhost:8000/ws/notifications/?token=<token>` in development.
 - Production clients can connect through nginx with `ws://localhost/ws/notifications/?token=<token>`.
 - Non-browser clients may also send `Authorization: Token <token>`.
 - Document uploads, updates, and ready/failed status changes are broadcast to all authenticated WebSocket clients.
