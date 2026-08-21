@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
     image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -56,7 +58,7 @@ services:
     expose:
       - "8000"
     volumes:
-      - document_prod_local_storage:/app/dms/local_uploads
+      - document_prod_local_storage:/app/dms/${DOCUMENT_LOCAL_STORAGE:-local_uploads}
     networks:
       - backend
 
@@ -64,6 +66,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
     image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -98,7 +102,7 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - document_prod_local_storage:/app/dms/local_uploads
+      - document_prod_local_storage:/app/dms/${DOCUMENT_LOCAL_STORAGE:-local_uploads}
     command: celery -A config.celery worker --loglevel=info
     networks:
       - backend
@@ -107,6 +111,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DOCUMENT_LOCAL_STORAGE: "${DOCUMENT_LOCAL_STORAGE:-local_uploads}"
     image: sanaap-dms-api:${APP_IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
@@ -139,7 +145,7 @@ services:
       rabbitmq:
         condition: service_healthy
     volumes:
-      - document_prod_local_storage:/app/dms/local_uploads
+      - document_prod_local_storage:/app/dms/${DOCUMENT_LOCAL_STORAGE:-local_uploads}
     command: celery -A config.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     networks:
       - backend

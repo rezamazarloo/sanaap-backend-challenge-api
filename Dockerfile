@@ -12,10 +12,13 @@ COPY . .
 
 FROM python:3.13-slim-bookworm
 
+ARG DOCUMENT_LOCAL_STORAGE=local_uploads
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV HOME=/home/django
 ENV PATH="/app/.venv/bin:$PATH"
+ENV DOCUMENT_LOCAL_STORAGE=${DOCUMENT_LOCAL_STORAGE}
 
 WORKDIR /app
 
@@ -24,7 +27,9 @@ RUN addgroup --system django \
 
 COPY --from=builder --chown=django:django /app /app
 
-RUN chmod +x /app/docker/entrypoint.sh
+RUN mkdir -p "/app/dms/${DOCUMENT_LOCAL_STORAGE}/documents" \
+    && chown -R django:django "/app/dms/${DOCUMENT_LOCAL_STORAGE}" \
+    && chmod +x /app/docker/entrypoint.sh
 
 WORKDIR /app/dms
 
