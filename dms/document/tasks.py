@@ -21,7 +21,11 @@ class ObjectStorageRetryTask(Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         document_id = _document_id_from_task_args(args, kwargs)
         if isinstance(exc, ObjectStorageError) and document_id is not None:
-            DocumentService().mark_document_upload_failed(document_id)
+            service = DocumentService()
+            service.mark_document_upload_failed(
+                document_id,
+                publish_document_event=_failure_event_publisher(service, self.name),
+            )
             logger.error(
                 "Document %s upload failed after %s retries.",
                 document_id,
@@ -80,3 +84,9 @@ def _document_id_from_task_args(args, kwargs):
     if args:
         return args[0]
     return None
+
+
+def _failure_event_publisher(service, task_name):
+    if task_name == "document.tasks.upload_document_task":
+        return service.event_publisher.document_uploaded
+    return service.event_publisher.document_updated

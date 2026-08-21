@@ -134,6 +134,23 @@ class DocumentService:
         return document
 
     def complete_pending_upload(self, document_id: int) -> Document | None:
+        return self._complete_pending_document(
+            document_id,
+            publish_document_event=self.event_publisher.document_uploaded,
+        )
+
+    def complete_pending_replacement(self, document_id: int) -> Document | None:
+        return self._complete_pending_document(
+            document_id,
+            publish_document_event=self.event_publisher.document_updated,
+        )
+
+    def _complete_pending_document(
+        self,
+        document_id: int,
+        *,
+        publish_document_event,
+    ) -> Document | None:
         try:
             document = Document.objects.get(pk=document_id)
         except Document.DoesNotExist:
@@ -152,7 +169,10 @@ class DocumentService:
                 uploaded_by_id=document.uploaded_by_id,
             )
         except LocalStagedFileMissing:
-            self.mark_document_upload_failed(document_id)
+            self.mark_document_upload_failed(
+                document_id,
+                publish_document_event=publish_document_event,
+            )
             return Document.objects.get(pk=document_id)
 
         updated = Document.objects.filter(
@@ -167,12 +187,9 @@ class DocumentService:
         document = Document.objects.get(pk=document_id)
         if updated:
             self.storage_service.delete_local_file(local_file_path)
-            self.event_publisher.document_updated(document)
+            publish_document_event(document)
 
         return document
-
-    def complete_pending_replacement(self, document_id: int) -> Document | None:
-        return self.complete_pending_upload(document_id)
 
     def delete_document(self, document: Document, *, actor) -> None:
         metadata = {
@@ -204,7 +221,12 @@ class DocumentService:
         )
         return download_url
 
-    def mark_document_upload_failed(self, document_id: int) -> None:
+    def mark_document_upload_failed(
+        self,
+        document_id: int,
+        *,
+        publish_document_event=None,
+    ) -> None:
         updated = Document.objects.filter(
             pk=document_id,
             status=DocumentStatus.PENDING,
@@ -214,7 +236,10 @@ class DocumentService:
         )
         if updated:
             document = Document.objects.only("id", "status").get(pk=document_id)
-            self.event_publisher.document_updated(document)
+            publish_document_event = (
+                publish_document_event or self.event_publisher.document_updated
+            )
+            publish_document_event(document)
 
     def enqueue_failed_upload_retries(self) -> dict[str, int]:
         from document.tasks import upload_document_task

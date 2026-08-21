@@ -122,6 +122,16 @@ docker compose -f docker-compose.prod.yml up -d --build
 - Non-browser clients may also send `Authorization: Token <token>`.
 - Document uploads, updates, and ready/failed status changes are broadcast to all authenticated WebSocket clients.
 
+Example document upload event:
+
+```json
+{
+  "event": "document.uploaded",
+  "document_id": 123,
+  "status": "ready"
+}
+```
+
 Example document update event:
 
 ```json

@@ -202,4 +202,34 @@ class DocumentServiceTests(SimpleTestCase):
                 queryset.update.call_args.kwargs["status"],
                 DocumentStatus.READY,
             )
+            event_publisher.document_uploaded.assert_called_once_with(document)
+
+    def test_complete_pending_replacement_notifies_document_updated(self):
+        with TemporaryDirectory() as local_storage_root:
+            storage_service = self.build_storage_service(local_storage_root)
+            local_file_path = storage_service.stage_uploaded_file(
+                uploaded_file=SimpleUploadedFile("new.png", PNG_BYTES),
+                object_key="documents/42/new.png",
+            )
+            document = FakeDocument(local_file_path)
+            queryset = MagicMock()
+            queryset.update.return_value = 1
+            event_publisher = MagicMock()
+
+            with (
+                patch(
+                    "document.services.document.Document.objects.get",
+                    side_effect=[document, document],
+                ),
+                patch(
+                    "document.services.document.Document.objects.filter",
+                    return_value=queryset,
+                ),
+            ):
+                DocumentService(
+                    storage_service=storage_service,
+                    event_publisher=event_publisher,
+                ).complete_pending_replacement(document.pk)
+
             event_publisher.document_updated.assert_called_once_with(document)
+            event_publisher.document_uploaded.assert_not_called()
