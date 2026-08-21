@@ -114,7 +114,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 - Browser clients can connect with `ws://localhost:8001/ws/notifications/?token=<token>` in development.
 - Production clients can connect through nginx with `ws://localhost/ws/notifications/?token=<token>`.
 - Non-browser clients may also send `Authorization: Token <token>`.
-- Document uploads, updates, ready/failed status changes, and deletions are broadcast to all authenticated WebSocket clients.
+- Document uploads, updates, and ready/failed status changes are broadcast to all authenticated WebSocket clients.
 
 Example document update event:
 
@@ -123,15 +123,6 @@ Example document update event:
   "event": "document.updated",
   "document_id": 123,
   "status": "ready"
-}
-```
-
-Example document deletion event:
-
-```json
-{
-  "event": "document.deleted",
-  "document_id": 123
 }
 ```
 
